@@ -21,13 +21,10 @@ import { appStore, UploadedFile } from "@/app/store";
 import { useShallow } from "zustand/shallow";
 import { ChatMention, ChatModel } from "app-types/chat";
 import dynamic from "next/dynamic";
-import { ToolModeDropdown } from "./tool-mode-dropdown";
 
-import { ToolSelectDropdown } from "./tool-select-dropdown";
 import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
 import { useTranslations } from "next-intl";
 import { Editor } from "@tiptap/react";
-import { WorkflowSummary } from "app-types/workflow";
 import { Avatar, AvatarFallback, AvatarImage } from "ui/avatar";
 import equal from "lib/equal";
 import { MCPIcon } from "ui/mcp-icon";
@@ -47,7 +44,6 @@ import { cn } from "@/lib/utils";
 import { useThreadFileUploader } from "@/hooks/use-thread-file-uploader";
 
 import { EMOJI_DATA } from "lib/const";
-import { AgentSummary } from "app-types/agent";
 import { FileUIPart, TextUIPart } from "ai";
 import { toast } from "sonner";
 import { isFilePartSupported, isIngestSupported } from "@/lib/ai/file-support";
@@ -256,41 +252,6 @@ export default function PromptInput({
           threadMentions: {
             ...prev.threadMentions,
             [threadId!]: newMentions,
-          },
-        };
-      });
-    },
-    [mentions, threadId],
-  );
-
-  const _onSelectWorkflow = useCallback(
-    (workflow: WorkflowSummary) => {
-      addMention({
-        type: "workflow",
-        name: workflow.name,
-        icon: workflow.icon,
-        workflowId: workflow.id,
-        description: workflow.description,
-      });
-    },
-    [addMention],
-  );
-
-  const _onSelectAgent = useCallback(
-    (agent: AgentSummary) => {
-      appStoreMutate((prev) => {
-        return {
-          threadMentions: {
-            ...prev.threadMentions,
-            [threadId!]: [
-              {
-                type: "agent",
-                name: agent.name,
-                icon: agent.icon,
-                description: agent.description,
-                agentId: agent.id,
-              },
-            ],
           },
         };
       });
