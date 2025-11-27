@@ -19,7 +19,7 @@ import {
 } from "ui/table";
 
 const FadeIn = memo(({ children }: PropsWithChildren) => {
-  return <span className="fade-in animate-in duration-1000">{children} </span>;
+  return <span className="fade-in animate-in duration-300">{children} </span>;
 });
 FadeIn.displayName = "FadeIn";
 
