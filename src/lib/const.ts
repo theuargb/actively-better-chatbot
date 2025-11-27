@@ -57,6 +57,10 @@ export const OAUTH_REQUIRED_CODE = "OAUTH_REQUIRED";
 
 export const SUPPORTED_LOCALES = [
   {
+    code: "uk",
+    name: "Українська 🇺🇦",
+  },
+  {
     code: "en",
     name: "English 🇺🇸",
   },
@@ -80,10 +84,6 @@ export const SUPPORTED_LOCALES = [
   {
     code: "zh",
     name: "Chinese 🇨🇳",
-  },
-  {
-    code: "uk",
-    name: "Українська 🇺🇦",
   },
 ];
 
