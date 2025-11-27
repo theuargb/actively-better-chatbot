@@ -86,8 +86,8 @@ const initialState: AppState = {
   allowedMcpServers: undefined,
   openUserSettings: false,
   allowedAppDefaultToolkit: [
-    AppDefaultToolkit.Code,
     AppDefaultToolkit.Visualization,
+    AppDefaultToolkit.WebSearch,
   ],
   toolPresets: [],
   chatModel: undefined,

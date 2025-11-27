@@ -11,6 +11,7 @@ import { SidebarHeaderShared } from "./sidebar-header";
 import { isShortcutEvent, Shortcuts } from "lib/keyboard-shortcuts";
 import { AppSidebarUser } from "./app-sidebar-user";
 import { BasicUser } from "app-types/user";
+import { getIsUserAdmin } from "lib/user/utils";
 
 export function AppSidebar({
   user,
@@ -39,7 +40,7 @@ export function AppSidebar({
       className="border-r border-sidebar-border/80"
     >
       <SidebarHeaderShared
-        title="better-chatbot"
+        title="Семантика"
         href="/"
         enableShortcuts={true}
         onLinkClick={() => {
@@ -51,7 +52,7 @@ export function AppSidebar({
       <SidebarContent className="mt-2 overflow-hidden relative">
         <div className="flex flex-col overflow-y-auto">
           <AppSidebarMenus user={user} />
-          <AppSidebarAgents userRole={userRole} />
+          {getIsUserAdmin(user) && <AppSidebarAgents userRole={userRole} />}
           <AppSidebarThreads />
         </div>
       </SidebarContent>

@@ -53,8 +53,7 @@ export const buildUserSystemPrompt = (
   userPreferences?: UserPreferences,
   agent?: Agent,
 ) => {
-  const assistantName =
-    agent?.name || userPreferences?.botName || "better-chatbot";
+  const assistantName = agent?.name || userPreferences?.botName || "Еней";
   const currentTime = format(new Date(), "EEEE, MMMM d, yyyy 'at' h:mm:ss a");
 
   let prompt = `You are ${assistantName}`;

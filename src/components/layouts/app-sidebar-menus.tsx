@@ -77,30 +77,34 @@ export function AppSidebarMenus({ user }: { user?: BasicUser }) {
             </SidebarMenuItem>
           </Tooltip>
         </SidebarMenu>
-        <SidebarMenu>
-          <Tooltip>
-            <SidebarMenuItem>
-              <Link href="/mcp">
-                <SidebarMenuButton className="font-semibold">
-                  <MCPIcon className="size-4 fill-accent-foreground" />
-                  {t("Layout.mcpConfiguration")}
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-          </Tooltip>
-        </SidebarMenu>
-        <SidebarMenu>
-          <Tooltip>
-            <SidebarMenuItem>
-              <Link href="/workflow">
-                <SidebarMenuButton className="font-semibold">
-                  <Waypoints className="size-4" />
-                  {t("Layout.workflow")}
-                </SidebarMenuButton>
-              </Link>
-            </SidebarMenuItem>
-          </Tooltip>
-        </SidebarMenu>
+        {getIsUserAdmin(user) && (
+          <SidebarMenu>
+            <Tooltip>
+              <SidebarMenuItem>
+                <Link href="/mcp">
+                  <SidebarMenuButton className="font-semibold">
+                    <MCPIcon className="size-4 fill-accent-foreground" />
+                    {t("Layout.mcpConfiguration")}
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+            </Tooltip>
+          </SidebarMenu>
+        )}
+        {getIsUserAdmin(user) && (
+          <SidebarMenu>
+            <Tooltip>
+              <SidebarMenuItem>
+                <Link href="/workflow">
+                  <SidebarMenuButton className="font-semibold">
+                    <Waypoints className="size-4" />
+                    {t("Layout.workflow")}
+                  </SidebarMenuButton>
+                </Link>
+              </SidebarMenuItem>
+            </Tooltip>
+          </SidebarMenu>
+        )}
         {getIsUserAdmin(user) && <AppSidebarAdmin />}
         <SidebarMenu className="group/archive">
           <Tooltip>
