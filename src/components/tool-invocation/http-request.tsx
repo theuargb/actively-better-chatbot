@@ -38,6 +38,8 @@ type DomainRenderer = React.FC<{
 
 const DOMAIN_RENDERERS: Record<string, DomainRenderer> = {
   "*.wikipedia.org": WikipediaResult,
+  "semantyka-rag-legal-generic-api.theuargb.workers.dev":
+    SemantykaLegalRAGResult,
 };
 
 /**
