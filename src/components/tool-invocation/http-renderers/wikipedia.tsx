@@ -392,6 +392,6 @@ export function WikipediaResult({ input, output }: WikipediaRendererProps) {
     );
   }
 
-  // Fallback - shouldn't reach here normally
+  // Unknown response type - return null to fall back to default rendering
   return null;
 }

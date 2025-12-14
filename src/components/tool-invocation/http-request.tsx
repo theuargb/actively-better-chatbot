@@ -31,6 +31,7 @@ interface HttpFetchResponse {
 
 // Domain-based renderer registry
 // Supports wildcards: "*.example.com" matches any subdomain
+// Renderers should return null if they can't handle the response
 type DomainRenderer = React.FC<{
   input: any;
   output: HttpFetchResponse;
@@ -132,9 +133,15 @@ function PureHttpRequestToolInvocation({
 
   // Check if there's a custom renderer for this URL
   const CustomRenderer = useMemo(() => {
-    if (!input?.url) return null;
+    if (!input?.url || !result) return null;
     return getRendererForUrl(input.url);
-  }, [input?.url]);
+  }, [input?.url, result]);
+
+  // Try custom renderer, it may return null if it can't handle the response
+  const customResult = useMemo(() => {
+    if (!CustomRenderer || !result) return null;
+    return <CustomRenderer input={input} output={result} />;
+  }, [CustomRenderer, input, result]);
 
   // Loading state
   if (!part.state.startsWith("output")) {
@@ -174,9 +181,9 @@ function PureHttpRequestToolInvocation({
     );
   }
 
-  // If we have a custom renderer, use it
-  if (CustomRenderer && result) {
-    return <CustomRenderer input={input} output={result} />;
+  // If we have a custom renderer result, use it
+  if (customResult) {
+    return customResult;
   }
 
   // Default rendering
