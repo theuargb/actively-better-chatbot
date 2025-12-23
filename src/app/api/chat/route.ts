@@ -206,6 +206,7 @@ export async function POST(request: Request) {
           .map(errorIf(() => !isToolCallAllowed && "Not allowed"))
           .map(() =>
             loadMcpTools({
+              userId: session.user.id,
               mentions,
               allowedMcpServers,
             }),
@@ -238,6 +239,7 @@ export async function POST(request: Request) {
               const output = await manualToolExecuteByLastMessage(
                 part,
                 { ...MCP_TOOLS, ...WORKFLOW_TOOLS, ...APP_DEFAULT_TOOLS },
+                session.user.id,
                 request.signal,
               );
               part.output = output;

@@ -65,6 +65,7 @@ describe("MCPClientsManager", () => {
     enabled: true,
     userId: "test-user-id",
     visibility: "private" as const,
+    perUserAuth: false,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -260,6 +261,7 @@ describe("MCPClientsManager", () => {
         ...serverToSave,
         id: "new-server-id",
         visibility: "private" as const,
+        perUserAuth: false,
       });
 
       await manager.persistClient(serverToSave);
@@ -391,17 +393,33 @@ describe("MCPClientsManager", () => {
     it("should return all clients", async () => {
       await manager.addClient("server1", "server1", mockServerConfig);
       await manager.addClient("server2", "server2", mockServerConfig);
+      vi.mocked(mockStorage.loadAll).mockResolvedValue([
+        {
+          ...mockServer,
+          id: "server1",
+          name: "server1",
+        },
+        {
+          ...mockServer,
+          id: "server2",
+          name: "server2",
+        },
+      ]);
 
       const clients = await manager.getClients();
 
       expect(clients).toHaveLength(2);
-      expect(clients[0]).toEqual({
+      expect(clients[0]).toMatchObject({
         id: "server1",
+        clientId: "server1",
         client: mockClient,
+        name: "server1",
       });
-      expect(clients[1]).toEqual({
+      expect(clients[1]).toMatchObject({
         id: "server2",
+        clientId: "server2",
         client: mockClient,
+        name: "server2",
       });
     });
   });
