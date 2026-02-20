@@ -1,169 +1,216 @@
 "use client";
 
-import { useId } from "react";
-import { motion } from "framer-motion";
+import { useMemo, useRef, useEffect } from "react";
+import {
+  motion,
+  useMotionTemplate,
+  useMotionValue,
+  useSpring,
+  useTransform,
+} from "framer-motion";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ASCII pixel-art figure wearing a vyshyvanka, with idle breathing animation.
-//
-// Each character in the FIGURE array is a color code:
-//   D = dark silhouette (hair, legs, boots)
-//   S = skin (face, neck)
-//   R = red embroidery stitch
-//   K = dark embroidery stitch (near-black)
-//   W = white shirt / sleeves
-//   G = gold collar & belt trim
-//   (space) = transparent
-//
-// Every non-space char renders as "█" with the mapped colour.
-// Rows are centered via flexbox — no manual padding needed.
-// ─────────────────────────────────────────────────────────────────────────────
-
-const PALETTE: Record<string, string> = {
-  D: "text-[#2c2520] dark:text-stone-400",
-  S: "text-[#e8b87a] dark:text-[#d4a76a]",
-  R: "text-[#c41e3a] dark:text-[#e04050]",
-  K: "text-[#1a1510] dark:text-stone-300",
-  W: "text-[#f0ebe4] dark:text-stone-500",
-  G: "text-[#c8952e] dark:text-yellow-500",
-};
-
-const FIGURE = [
-  // ── head ──
-  "       DDDDDDDD",
-  "     DDDDDDDDDDDD",
-  "    DDDDDDDDDDDDDD",
-  "   DDSSSSSSSSSSSSDD",
-  "   DSSSSSSSSSSSSSD",
-  "   DSSDDSSSSSDDSSSD",
-  "   DSSSSSSSSSSSSSD",
-  "   DSSSSSDDSSSSSD",
-  "    DSSSSSSSSSSSD",
-  "     DDSSSSSSDD",
-  "       DSSSD",
-  "        DSS",
-  // ── collar ──
-  "    GGGGGGGGGGGGGGG",
-  // ── torso (vyshyvanka) ──
-  "  WWWWGRKRKRKRKRKRKGWWWW",
-  " WWWWWGKRKRKRKRKRKRKGWWWWW",
-  " WWWWWGRKRKRKRKRKRKGWWWWW",
-  " WWWWWGKRKRKRKRKRKRKGWWWWW",
-  " WWWWWGRKRKRKRKRKRKGWWWWW",
-  " WWWWWGKRKRKRKRKRKRKGWWWWW",
-  " WWWWWGRKRKRKRKRKRKGWWWWW",
-  " WWWWWGKRKRKRKRKRKRKGWWWWW",
-  "  WWWWGRKRKRKRKRKRKGWWWW",
-  "   WWWGKRKRKRKRKRKRKGWWW",
-  // ── belt ──
-  "    GGGGGGGGGGGGGGG",
-  // ── legs ──
-  "     DDDDDDDDDDDD",
-  "    DDDDDDDDDDDDDD",
-  "    DDDDDDD  DDDDDDD",
-  "    DDDDDD    DDDDDD",
-  "    DDDDD      DDDDD",
-  "    DDDD        DDDD",
-  "    DDD          DDD",
-  // ── boots ──
-  "   DDDDD        DDDDD",
-  "   DDDDDD      DDDDDD",
+const PATTERN = [
+  "K_K_K___________R___________K_K_K",
+  "_K_K___________RRR___________K_K_",
+  "K_K_K_________RRRRR_________K_K_K",
+  "_K_K_________RRR_RRR_________K_K_",
+  "K_K_________RRR___RRR_________K_K",
+  "___________RRR_____RRR___________",
+  "__________RRR_______RRR__________",
+  "_________RRR____K____RRR_________",
+  "________RRR____KKK____RRR________",
+  "_______RRR____KK_KK____RRR_______",
+  "______RRR____KK___KK____RRR______",
+  "_____RRR____KK_____KK____RRR_____",
+  "____RRR____KK_______KK____RRR____",
+  "___RRR____KK____K____KK____RRR___",
+  "__RRR____KK____KKK____KK____RRR__",
+  "_RRR____KK____KK_KK____KK____RRR_",
+  "RRRRRRRRRRRRRRR___RRRRRRRRRRRRRRR",
+  "_RRR____KK____KK_KK____KK____RRR_",
+  "__RRR____KK____KKK____KK____RRR__",
+  "___RRR____KK____K____KK____RRR___",
+  "____RRR____KK_______KK____RRR____",
+  "_____RRR____KK_____KK____RRR_____",
+  "______RRR____KK___KK____RRR______",
+  "_______RRR____KK_KK____RRR_______",
+  "________RRR____KKK____RRR________",
+  "_________RRR____K____RRR_________",
+  "__________RRR_______RRR__________",
+  "___________RRR_____RRR___________",
+  "K_K_________RRR___RRR_________K_K",
+  "_K_K_________RRR_RRR_________K_K_",
+  "K_K_K_________RRRRR_________K_K_K",
+  "_K_K___________RRR___________K_K_",
+  "K_K_K___________R___________K_K_K",
 ];
 
-// Pre-compute per-character metadata at module level
-type Cell = { visible: boolean; color: string; isRed: boolean };
-const CHARS: Cell[][] = FIGURE.map((line) =>
-  line.split("").map((ch) => ({
-    visible: ch !== " ",
-    color: PALETTE[ch] ?? "",
-    isRed: ch === "R",
-  })),
-);
-
-// ─────────────────────────────────────────────────────────────────────────────
-
 export function VyshyvankaOrnament() {
-  const id = useId();
-  const pid = `vo${id.replace(/:/g, "")}`;
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Mouse position values
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  // Smooth spring physics for the mouse movement
+  const springConfig = { damping: 25, stiffness: 150, mass: 0.5 };
+  const smoothMouseX = useSpring(mouseX, springConfig);
+  const smoothMouseY = useSpring(mouseY, springConfig);
+
+  // 3D rotation transforms based on mouse position
+  const rotateX = useTransform(smoothMouseY, [-1, 1], [15, -15]);
+  const rotateY = useTransform(smoothMouseX, [-1, 1], [-15, 15]);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!containerRef.current) return;
+
+      const rect = containerRef.current.getBoundingClientRect();
+
+      // Calculate normalized mouse position (-1 to 1) relative to container center
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+
+      const normalizedX = (e.clientX - centerX) / (rect.width / 2);
+      const normalizedY = (e.clientY - centerY) / (rect.height / 2);
+
+      // Clamp values between -1 and 1
+      mouseX.set(Math.max(-1, Math.min(1, normalizedX)));
+      mouseY.set(Math.max(-1, Math.min(1, normalizedY)));
+    };
+
+    const handleMouseLeave = () => {
+      // Reset to center when mouse leaves
+      mouseX.set(0);
+      mouseY.set(0);
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    document.body.addEventListener("mouseleave", handleMouseLeave);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      document.body.removeEventListener("mouseleave", handleMouseLeave);
+    };
+  }, [mouseX, mouseY]);
+
+  const cells = useMemo(() => {
+    const result = [];
+    for (let y = 0; y < PATTERN.length; y++) {
+      for (let x = 0; x < PATTERN[y].length; x++) {
+        const char = PATTERN[y][x];
+        if (char === "R" || char === "K") {
+          result.push({ x, y, type: char });
+        }
+      }
+    }
+    return result;
+  }, []);
 
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">
-      {/* Scoped animation for the red-stitch pulse */}
-      <style>{`
-        @keyframes ${pid}-stitch {
-          0%, 100% { opacity: .82; }
-          50%      { opacity: 1; }
-        }
-        .${pid}-r { animation: ${pid}-stitch 3s ease-in-out infinite; }
-      `}</style>
-
-      {/* Warm linen background */}
-      <div className="absolute inset-0 bg-[#faf6f0] dark:bg-stone-950" />
-
+    <div
+      ref={containerRef}
+      className="absolute inset-0 overflow-hidden bg-[#faf6f0] dark:bg-stone-950 flex items-center justify-center"
+      style={{ perspective: "1000px" }}
+    >
       {/* Subtle fabric noise */}
       <div
-        className="absolute inset-0 opacity-[0.025] dark:opacity-[0.04] mix-blend-multiply"
+        className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] mix-blend-multiply pointer-events-none"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
         }}
       />
 
-      {/* Centered figure with float + sway idle animation */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        {/* Ground shadow */}
-        <motion.div
-          className="absolute rounded-[50%] bg-stone-900/15 dark:bg-stone-400/8 blur-md"
+      <motion.div
+        className="relative w-full max-w-[80%] aspect-square max-h-[80%] flex items-center justify-center pointer-events-none"
+        style={{
+          rotateX,
+          rotateY,
+          transformStyle: "preserve-3d",
+        }}
+      >
+        <svg
+          viewBox="0 0 33 33"
+          className="w-full h-full drop-shadow-xl"
           style={{
-            width: "220px",
-            height: "18px",
-            bottom: "calc(50% - 285px)",
-          }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1, scaleX: [1, 0.92, 1] }}
-          transition={{
-            opacity: { duration: 1.5, ease: "easeOut" },
-            scaleX: {
-              duration: 3.5,
-              repeat: Number.POSITIVE_INFINITY,
-              ease: "easeInOut",
-            },
-          }}
-        />
-
-        <motion.div
-          className="flex flex-col items-center font-mono leading-none"
-          style={{ fontSize: "clamp(8px, 1.8vh, 18px)" }}
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: [0, -6, 0] }}
-          transition={{
-            opacity: { duration: 1.5, ease: "easeOut" },
-            y: {
-              duration: 3.5,
-              repeat: Number.POSITIVE_INFINITY,
-              ease: "easeInOut",
-              delay: 1.5,
-            },
+            filter: "drop-shadow(0px 10px 20px rgba(0,0,0,0.15))",
+            overflow: "visible",
           }}
         >
-          {CHARS.map((row, ri) => (
-            <div key={ri} className="flex justify-center">
-              {row.map((cell, ci) => (
-                <span
-                  key={ci}
-                  className={`inline-block text-center ${cell.color}${cell.isRed ? ` ${pid}-r` : ""}`}
-                  style={{ width: "1ch" }}
-                >
-                  {cell.visible ? "\u2588" : "\u00A0"}
-                </span>
-              ))}
-            </div>
-          ))}
-        </motion.div>
-      </div>
+          {cells.map((cell) => {
+            const isRed = cell.type === "R";
+            const colorClass = isRed
+              ? "stroke-red-600 dark:stroke-red-500"
+              : "stroke-stone-900 dark:stroke-stone-200";
+
+            // Calculate distance from center for staggered animation and parallax
+            const dx = cell.x - 16;
+            const dy = cell.y - 16;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const delay = dist * 0.04;
+
+            // Create a parallax effect based on distance from center
+            // Outer elements move more than inner elements
+            const parallaxFactor = 1 + dist * 0.15;
+
+            return (
+              <StitchCell
+                key={`${cell.x}-${cell.y}`}
+                cell={cell}
+                colorClass={colorClass}
+                delay={delay}
+                mouseX={smoothMouseX}
+                mouseY={smoothMouseY}
+                parallaxFactor={parallaxFactor}
+              />
+            );
+          })}
+        </svg>
+      </motion.div>
 
       {/* Vignette overlays */}
-      <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/40" />
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-background/30" />
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/40 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-background/30 pointer-events-none" />
     </div>
+  );
+}
+
+function StitchCell({
+  cell,
+  colorClass,
+  delay,
+  mouseX,
+  mouseY,
+  parallaxFactor,
+}: {
+  cell: { x: number; y: number };
+  colorClass: string;
+  delay: number;
+  mouseX: any;
+  mouseY: any;
+  parallaxFactor: number;
+}) {
+  // Calculate individual cell translation based on mouse position and parallax factor
+  const x = useTransform(mouseX, [-1, 1], [-parallaxFactor, parallaxFactor]);
+  const y = useTransform(mouseY, [-1, 1], [-parallaxFactor, parallaxFactor]);
+
+  return (
+    <g transform={`translate(${cell.x}, ${cell.y})`}>
+      <motion.g style={{ x, y }}>
+        <motion.path
+          d="M0.2,0.2 L0.8,0.8 M0.8,0.2 L0.2,0.8"
+          className={colorClass}
+          strokeWidth="0.3"
+          strokeLinecap="round"
+          initial={{ pathLength: 0, opacity: 0, scale: 0 }}
+          animate={{ pathLength: 1, opacity: 1, scale: 1 }}
+          transition={{
+            duration: 1.2,
+            delay: delay,
+            ease: [0.23, 1, 0.32, 1], // Custom spring-like easing
+          }}
+        />
+      </motion.g>
+    </g>
   );
 }
