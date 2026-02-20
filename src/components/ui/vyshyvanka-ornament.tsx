@@ -1,13 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useEffect } from "react";
-import {
-  motion,
-  useMotionTemplate,
-  useMotionValue,
-  useSpring,
-  useTransform,
-} from "framer-motion";
+import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 
 const PATTERN = [
   "K_K_K___________R___________K_K_K",
@@ -95,7 +89,7 @@ export function VyshyvankaOrnament() {
   }, [mouseX, mouseY]);
 
   const cells = useMemo(() => {
-    const result = [];
+    const result: { x: number; y: number; type: "R" | "K" }[] = [];
     for (let y = 0; y < PATTERN.length; y++) {
       for (let x = 0; x < PATTERN[y].length; x++) {
         const char = PATTERN[y][x];
