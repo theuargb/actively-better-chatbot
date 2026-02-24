@@ -56,6 +56,8 @@ export interface ExaContentsRequest {
   };
 }
 
+export const MAX_CONTENT_CHARACTERS = 10000;
+
 export const exaSearchSchema: JSONSchema7 = {
   type: "object",
   properties: {
@@ -119,7 +121,7 @@ export const exaSearchSchema: JSONSchema7 = {
       description: "Maximum characters to extract from each result",
       default: 3000,
       minimum: 100,
-      maximum: 10000,
+      maximum: MAX_CONTENT_CHARACTERS,
     },
   },
   required: ["query"],
@@ -132,13 +134,14 @@ export const exaContentsSchema: JSONSchema7 = {
       type: "array",
       items: { type: "string" },
       description: "List of URLs to extract content from",
+      maxItems: 5,
     },
     maxCharacters: {
       type: "number",
       description: "Maximum characters to extract from each URL",
       default: 3000,
       minimum: 100,
-      maximum: 10000,
+      maximum: MAX_CONTENT_CHARACTERS,
     },
     livecrawl: {
       type: "string",
@@ -214,22 +217,39 @@ export const exaSearchToolForWorkflow = createTool({
   },
 });
 
+const truncateContentsResult = (result: any, maxChars: number): any => {
+  if (!result?.results) return result;
+  return {
+    ...result,
+    results: result.results.map((r: any) => ({
+      ...r,
+      text: typeof r.text === "string" ? r.text.slice(0, maxChars) : r.text,
+    })),
+  };
+};
+
 export const exaContentsToolForWorkflow = createTool({
   description:
     "Extract detailed content from specific URLs using Exa AI - retrieves full text content, metadata, and structured information from web pages with live crawling capabilities.",
   inputSchema: jsonSchemaToZod(exaContentsSchema),
   execute: async (params) => {
+    const maxChars = Math.min(
+      params.maxCharacters || 3000,
+      MAX_CONTENT_CHARACTERS,
+    );
+    const urls = params.urls.slice(0, 5);
     const contentsRequest: ExaContentsRequest = {
-      ids: params.urls,
+      ids: urls,
       contents: {
         text: {
-          maxCharacters: params.maxCharacters || 3000,
+          maxCharacters: maxChars,
         },
         livecrawl: params.livecrawl || "preferred",
       },
     };
 
-    return fetchExa("/contents", contentsRequest);
+    const result = await fetchExa("/contents", contentsRequest);
+    return truncateContentsResult(result, maxChars);
   },
 });
 
@@ -287,17 +307,23 @@ export const exaContentsTool = createTool({
   inputSchema: jsonSchemaToZod(exaContentsSchema),
   execute: async (params) => {
     return safe(async () => {
+      const maxChars = Math.min(
+        params.maxCharacters || 3000,
+        MAX_CONTENT_CHARACTERS,
+      );
+      const urls = params.urls.slice(0, 5);
       const contentsRequest: ExaContentsRequest = {
-        ids: params.urls,
+        ids: urls,
         contents: {
           text: {
-            maxCharacters: params.maxCharacters || 3000,
+            maxCharacters: maxChars,
           },
           livecrawl: params.livecrawl || "preferred",
         },
       };
 
-      return await fetchExa("/contents", contentsRequest);
+      const result = await fetchExa("/contents", contentsRequest);
+      return truncateContentsResult(result, maxChars);
     })
       .ifFail((e) => {
         return {
