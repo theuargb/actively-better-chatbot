@@ -39,6 +39,7 @@ import {
 import { toast } from "sonner";
 import { safe } from "ts-safe";
 import { ChatMetadata, ChatModel, ManualToolConfirmTag } from "app-types/chat";
+import { isMcpAuthRequiredToolResult } from "app-types/mcp";
 
 import { useTranslations } from "next-intl";
 import { extractMCPToolId } from "lib/ai/mcp/mcp-tool-id";
@@ -1105,12 +1106,12 @@ export const ToolMessagePart = memo(
                   <WorkflowInvocation
                     result={result as VercelAIWorkflowToolStreamingResult}
                   />
-                ) : (result as any)?._mcpAuthRequired ? (
+                ) : isMcpAuthRequiredToolResult(result) ? (
                   <div className="mt-2">
                     <Alert
                       className="cursor-pointer hover:bg-accent/10 transition-colors border-primary/50"
                       onClick={async () => {
-                        await redriectMcpOauth((result as any)._mcpServerId);
+                        await redriectMcpOauth(result._mcpServerId);
                       }}
                       role="button"
                       tabIndex={0}

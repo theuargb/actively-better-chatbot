@@ -93,7 +93,7 @@ export function McpServerCustomizationContent({
       await updatePerUserAuthAction(id, checked);
       mutate("/api/mcp/list");
     } catch (e) {
-      handleErrorWithToast(e as any);
+      handleErrorWithToast(e);
     } finally {
       setIsPerUserAuthLoading(false);
     }

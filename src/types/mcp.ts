@@ -3,6 +3,7 @@ import {
   OAuthTokens,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import { Tool } from "ai";
+import type { JSONSchema7 } from "json-schema";
 import { tag } from "lib/tag";
 import { z } from "zod";
 
@@ -32,11 +33,7 @@ export type MCPServerConfig = MCPRemoteConfig | MCPStdioConfig;
 export type MCPToolInfo = {
   name: string;
   description: string;
-  inputSchema?: {
-    type?: any;
-    properties?: Record<string, any>;
-    required?: string[];
-  };
+  inputSchema?: JSONSchema7;
 };
 
 export type MCPServerInfo = {
@@ -256,6 +253,24 @@ export const CallToolResultSchema = z.object({
 });
 
 export type CallToolResult = z.infer<typeof CallToolResultSchema>;
+
+export type McpAuthRequiredToolResult = CallToolResult & {
+  _mcpAuthRequired: true;
+  _mcpServerId: string;
+};
+
+export function isMcpAuthRequiredToolResult(
+  value: unknown,
+): value is McpAuthRequiredToolResult {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "_mcpAuthRequired" in value &&
+    "_mcpServerId" in value &&
+    (value as { _mcpAuthRequired?: unknown })._mcpAuthRequired === true &&
+    typeof (value as { _mcpServerId?: unknown })._mcpServerId === "string"
+  );
+}
 
 export type McpOAuthSession = {
   id: string;

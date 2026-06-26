@@ -70,6 +70,11 @@ describe("MCPClientsManager", () => {
     updatedAt: new Date(),
   };
 
+  const mockContext = (servers = [mockServer]) => ({
+    userId: "test-user-id",
+    servers,
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -353,9 +358,8 @@ describe("MCPClientsManager", () => {
       const newClient = { ...mockClient };
       vi.mocked(mockCreateMCPClient).mockReturnValue(newClient);
 
-      await manager.refreshClient("test-server");
+      await manager.refreshClient("test-server", mockContext([updatedServer]));
 
-      expect(mockStorage.get).toHaveBeenCalledWith("test-server");
       expect(mockCreateMCPClient).toHaveBeenCalledWith(
         "test-server",
         "test-server",
@@ -365,17 +369,15 @@ describe("MCPClientsManager", () => {
     });
 
     it("should throw error for non-existent client", async () => {
-      await expect(manager.refreshClient("non-existent")).rejects.toThrow(
-        "Client non-existent not found",
-      );
+      await expect(
+        manager.refreshClient("non-existent", mockContext()),
+      ).rejects.toThrow("MCP server non-existent is not accessible");
     });
 
     it("should throw error when storage client not found", async () => {
-      vi.mocked(mockStorage.get).mockResolvedValue(null);
-
-      await expect(manager.refreshClient("test-server")).rejects.toThrow(
-        "Client test-server not found",
-      );
+      await expect(
+        manager.refreshClient("test-server", mockContext([])),
+      ).rejects.toThrow("MCP server test-server is not accessible");
     });
   });
 
@@ -386,7 +388,7 @@ describe("MCPClientsManager", () => {
     });
 
     it("should return empty array when no clients", async () => {
-      const clients = await manager.getClients();
+      const clients = await manager.getClients(mockContext([]));
       expect(clients).toEqual([]);
     });
 
@@ -406,7 +408,20 @@ describe("MCPClientsManager", () => {
         },
       ]);
 
-      const clients = await manager.getClients();
+      const clients = await manager.getClients(
+        mockContext([
+          {
+            ...mockServer,
+            id: "server1",
+            name: "server1",
+          },
+          {
+            ...mockServer,
+            id: "server2",
+            name: "server2",
+          },
+        ]),
+      );
 
       expect(clients).toHaveLength(2);
       expect(clients[0]).toMatchObject({
@@ -431,7 +446,7 @@ describe("MCPClientsManager", () => {
     });
 
     it("should return empty object when no clients", async () => {
-      const tools = await manager.tools();
+      const tools = await manager.tools(mockContext([]));
       expect(tools).toEqual({});
     });
 
@@ -450,7 +465,15 @@ describe("MCPClientsManager", () => {
       vi.mocked(mockCreateMCPClient).mockReturnValue(clientWithoutTools);
       await manager.addClient("empty-server", "empty-server", mockServerConfig);
 
-      const tools = await manager.tools();
+      const tools = await manager.tools(
+        mockContext([
+          {
+            ...mockServer,
+            id: "empty-server",
+            name: "empty-server",
+          },
+        ]),
+      );
       expect(tools).toEqual({});
     });
   });
@@ -475,7 +498,7 @@ describe("MCPClientsManager", () => {
 
       await manager.cleanup();
 
-      const clients = await manager.getClients();
+      const clients = await manager.getClients(mockContext());
       expect(clients).toEqual([]);
     });
   });

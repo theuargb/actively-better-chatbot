@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { McpServerTable } from "lib/db/pg/schema.pg";
 import { mcpOAuthRepository, mcpRepository } from "lib/db/repository";
+import type { MCPUserContext } from "lib/ai/mcp/create-mcp-clients-manager";
 import {
   canCreateMCP,
   canManageMCPServer,
@@ -11,27 +12,38 @@ import {
   getCurrentUser,
 } from "lib/auth/permissions";
 
-export async function selectMcpClientsAction() {
-  // Get current user to filter MCP servers
+async function requireCurrentUser() {
   const currentUser = await getCurrentUser();
-  if (!currentUser) {
+  if (!currentUser?.id) {
+    throw new Error("You must be logged in to use MCP connections");
+  }
+  return currentUser;
+}
+
+async function getMcpUserContext(userId: string): Promise<MCPUserContext> {
+  return {
+    userId,
+    servers: await mcpRepository.selectAllForUser(userId),
+  };
+}
+
+export async function selectMcpClientsAction() {
+  const currentUser = await getCurrentUser();
+  if (!currentUser?.id) {
     return [];
   }
-
-  // Get all MCP servers the user can access (their own + shared)
-  const accessibleServers = await mcpRepository.selectAllForUser(
-    currentUser.id,
-  );
+  const context = await getMcpUserContext(currentUser.id);
+  const accessibleServers = context.servers;
 
   // Warm up clients for the current user
   await Promise.allSettled(
     accessibleServers.map((server) =>
-      mcpClientsManager.getClient(server.id, currentUser.id),
+      mcpClientsManager.getClient(server.id, context),
     ),
   );
 
   // Get all active clients and filter to only accessible ones
-  const list = await mcpClientsManager.getClients(currentUser.id);
+  const list = await mcpClientsManager.getClients(context);
   const activeClientsMap = new Map(list.map((c) => [c.id, c.client]));
 
   // Check authorization status for per-user auth servers
@@ -75,8 +87,9 @@ export async function selectMcpClientsAction() {
 }
 
 export async function selectMcpClientAction(id: string) {
-  const currentUser = await getCurrentUser();
-  const client = await mcpClientsManager.getClient(id, currentUser?.id);
+  const currentUser = await requireCurrentUser();
+  const context = await getMcpUserContext(currentUser.id);
+  const client = await mcpClientsManager.getClient(id, context);
   if (!client) {
     throw new Error("Client not found");
   }
@@ -167,14 +180,16 @@ export async function removeMcpClientAction(id: string) {
 }
 
 export async function refreshMcpClientAction(id: string) {
-  const currentUser = await getCurrentUser();
-  await mcpClientsManager.refreshClient(id, currentUser?.id);
+  const currentUser = await requireCurrentUser();
+  const context = await getMcpUserContext(currentUser.id);
+  await mcpClientsManager.refreshClient(id, context);
 }
 
 export async function authorizeMcpClientAction(id: string) {
-  const currentUser = await getCurrentUser();
+  const currentUser = await requireCurrentUser();
+  const context = await getMcpUserContext(currentUser.id);
   await refreshMcpClientAction(id);
-  const client = await mcpClientsManager.getClient(id, currentUser?.id);
+  const client = await mcpClientsManager.getClient(id, context);
   if (client?.client.status != "authorizing") {
     throw new Error("Not Authorizing");
   }
@@ -182,14 +197,15 @@ export async function authorizeMcpClientAction(id: string) {
 }
 
 export async function checkTokenMcpClientAction(id: string) {
-  const currentUser = await getCurrentUser();
+  const currentUser = await requireCurrentUser();
+  const context = await getMcpUserContext(currentUser.id);
   const session = await mcpOAuthRepository.getAuthenticatedSession(
     id,
-    currentUser?.id,
+    currentUser.id,
   );
 
   // for wait connect to mcp server
-  await mcpClientsManager.getClient(id, currentUser?.id).catch(() => null);
+  await mcpClientsManager.getClient(id, context).catch(() => null);
 
   return !!session?.tokens;
 }
@@ -199,8 +215,9 @@ export async function callMcpToolAction(
   toolName: string,
   input: unknown,
 ) {
-  const currentUser = await getCurrentUser();
-  return mcpClientsManager.toolCall(id, toolName, input, currentUser?.id);
+  const currentUser = await requireCurrentUser();
+  const context = await getMcpUserContext(currentUser.id);
+  return mcpClientsManager.toolCall(id, toolName, input, context);
 }
 
 export async function callMcpToolByServerNameAction(
@@ -208,12 +225,13 @@ export async function callMcpToolByServerNameAction(
   toolName: string,
   input: unknown,
 ) {
-  const currentUser = await getCurrentUser();
+  const currentUser = await requireCurrentUser();
+  const context = await getMcpUserContext(currentUser.id);
   return mcpClientsManager.toolCallByServerName(
     serverName,
     toolName,
     input,
-    currentUser?.id,
+    context,
   );
 }
 
@@ -257,8 +275,12 @@ export async function updatePerUserAuthAction(
   // Update the perUserAuth of the MCP server
   await mcpRepository.updatePerUserAuth(id, perUserAuth);
 
-  // Refresh the client to apply changes
-  await mcpClientsManager.refreshClient(id);
+  const currentUser = await requireCurrentUser();
+  const context = await getMcpUserContext(currentUser.id);
+
+  // Drop stale base/per-user clients and refresh under the actor context.
+  await mcpClientsManager.disconnectServer(id);
+  await mcpClientsManager.refreshClient(id, context);
 
   return { success: true };
 }

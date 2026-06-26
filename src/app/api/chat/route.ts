@@ -11,7 +11,11 @@ import {
 
 import { customModelProvider, isToolCallUnsupportedModel } from "lib/ai/models";
 
-import { agentRepository, chatRepository } from "lib/db/repository";
+import {
+  agentRepository,
+  chatRepository,
+  mcpRepository,
+} from "lib/db/repository";
 import globalLogger from "logger";
 import {
   buildMcpServerCustomizationsSystemPrompt,
@@ -202,11 +206,15 @@ export async function POST(request: Request) {
 
     const stream = createUIMessageStream({
       execute: async ({ writer: dataStream }) => {
+        const mcpContext = {
+          userId: session.user.id,
+          servers: await mcpRepository.selectAllForUser(session.user.id),
+        };
         const MCP_TOOLS = await safe()
           .map(errorIf(() => !isToolCallAllowed && "Not allowed"))
           .map(() =>
             loadMcpTools({
-              userId: session.user.id,
+              mcpContext,
               mentions,
               allowedMcpServers,
             }),
@@ -219,6 +227,7 @@ export async function POST(request: Request) {
             loadWorkFlowTools({
               mentions,
               dataStream,
+              mcpContext,
             }),
           )
           .orElse({});
@@ -239,7 +248,7 @@ export async function POST(request: Request) {
               const output = await manualToolExecuteByLastMessage(
                 part,
                 { ...MCP_TOOLS, ...WORKFLOW_TOOLS, ...APP_DEFAULT_TOOLS },
-                session.user.id,
+                mcpContext,
                 request.signal,
               );
               part.output = output;

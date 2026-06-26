@@ -11,9 +11,8 @@ export async function GET() {
   }
 
   const servers = await mcpRepository.selectAllForUser(currentUser.id);
-  const memoryClientsBefore = await mcpClientsManager.getClients(
-    currentUser.id,
-  );
+  const context = { userId: currentUser.id, servers };
+  const memoryClientsBefore = await mcpClientsManager.getClients(context);
 
   const memoryMap = new Map(
     memoryClientsBefore.map(({ id, client }) => [id, client] as const),
@@ -25,13 +24,13 @@ export async function GET() {
   if (addTargets.length > 0) {
     await Promise.allSettled(
       addTargets.map((server) =>
-        mcpClientsManager.refreshClient(server.id, currentUser.id),
+        mcpClientsManager.refreshClient(server.id, context),
       ),
     );
   }
 
   // Fetch again to get updated statuses
-  const memoryClients = await mcpClientsManager.getClients(currentUser.id);
+  const memoryClients = await mcpClientsManager.getClients(context);
   const updatedMemoryMap = new Map(
     memoryClients.map(({ id, client }) => [id, client] as const),
   );

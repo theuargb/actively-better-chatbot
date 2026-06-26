@@ -22,6 +22,27 @@ import { jsonSchema, ToolCallOptions } from "ai";
 import { createMemoryMCPConfigStorage } from "./memory-mcp-config-storage";
 import { colorize } from "consola/utils";
 
+export type MCPUserContext = {
+  userId: string;
+  servers: McpServerSelect[];
+};
+
+type TextToolContent = {
+  type: "text";
+  text: string;
+};
+
+function isTextToolContent(content: unknown): content is TextToolContent {
+  return (
+    typeof content === "object" &&
+    content !== null &&
+    "type" in content &&
+    "text" in content &&
+    content.type === "text" &&
+    typeof content.text === "string"
+  );
+}
+
 /**
  * Interface for storage of MCP server configurations.
  * Implementations should handle persistent storage of server configs.
@@ -134,15 +155,16 @@ export class MCPClientsManager {
   /**
    * Returns all tools from all clients as a flat object
    */
-  async tools(userId?: string): Promise<Record<string, VercelAIMcpTool>> {
+  async tools(
+    context: MCPUserContext,
+  ): Promise<Record<string, VercelAIMcpTool>> {
     await this.waitInitialized();
-    const configs = await this.storage.loadAll();
 
     const tools: Record<string, VercelAIMcpTool> = {};
 
-    for (const config of configs) {
-      const { id, name, toolInfo: storedToolInfo, perUserAuth } = config;
-      const clientId = perUserAuth && userId ? `${id}:${userId}` : id;
+    for (const config of context.servers) {
+      const { id, name, toolInfo: storedToolInfo } = config;
+      const clientId = this.getClientIdForServer(config, context.userId);
       const client = this.clients.get(clientId);
 
       const toolInfo =
@@ -169,7 +191,7 @@ export class MCPClientsManager {
             _mcpServerId: id,
             execute: (params, options: ToolCallOptions) => {
               options?.abortSignal?.throwIfAborted();
-              return this.toolCall(id, tool.name, params, userId);
+              return this.toolCall(id, tool.name, params, context);
             },
           });
       }
@@ -214,7 +236,7 @@ export class MCPClientsManager {
     userId?: string,
   ) {
     const server = await this.storage.get(id);
-    const clientId = await this.getClientId(id, userId);
+    const clientId = server ? this.getClientIdForServer(server, userId) : id;
     if (this.clients.has(clientId)) {
       const prevClient = this.clients.get(clientId)!;
       void prevClient.client.disconnect();
@@ -262,7 +284,7 @@ export class MCPClientsManager {
         await this.storage.delete(id);
       }
     }
-    this.disconnectClient(id);
+    this.disconnectServer(id);
   }
 
   async disconnectClient(id: string) {
@@ -273,20 +295,26 @@ export class MCPClientsManager {
     }
   }
 
+  async disconnectServer(id: string) {
+    const clientIds = Array.from(this.clients.keys()).filter(
+      (clientId) => clientId === id || clientId.startsWith(`${id}:`),
+    );
+    await Promise.allSettled(
+      clientIds.map((clientId) => this.disconnectClient(clientId)),
+    );
+  }
+
   /**
    * Refreshes an existing client with a new configuration or its existing config
    */
-  async refreshClient(id: string, userId?: string) {
+  async refreshClient(id: string, context: MCPUserContext) {
     await this.waitInitialized();
-    const server = await this.storage.get(id);
-    if (!server) {
-      throw new Error(`Client ${id} not found`);
-    }
+    const server = this.requireAccessibleServer(context, id);
     this.logger.info(
-      `Refreshing client ${server.name}${userId ? ` for user ${userId}` : ""}`,
+      `Refreshing client ${server.name} for user ${context.userId}`,
     );
-    await this.addClient(id, server.name, server.config, userId);
-    const clientId = await this.getClientId(id, userId);
+    await this.addClient(id, server.name, server.config, context.userId);
+    const clientId = this.getClientIdForServer(server, context.userId);
     return this.clients.get(clientId)!;
   }
 
@@ -296,9 +324,8 @@ export class MCPClientsManager {
     await Promise.allSettled(clients.map(({ client }) => client.disconnect()));
   }
 
-  async getClients(userId?: string) {
+  async getClients(context: MCPUserContext) {
     await this.waitInitialized();
-    const configs = await this.storage.loadAll();
     const result: {
       id: string;
       clientId: string;
@@ -306,9 +333,8 @@ export class MCPClientsManager {
       name: string;
     }[] = [];
 
-    for (const config of configs) {
-      const clientId =
-        config.perUserAuth && userId ? `${config.id}:${userId}` : config.id;
+    for (const config of context.servers) {
+      const clientId = this.getClientIdForServer(config, context.userId);
       const client = this.clients.get(clientId);
       if (client) {
         result.push({
@@ -323,26 +349,35 @@ export class MCPClientsManager {
     return result;
   }
 
-  private async getClientId(id: string, userId?: string) {
-    const server = await this.storage.get(id);
-    if (!server) {
-      return id;
+  private getClientIdForServer(server: McpServerSelect, userId?: string) {
+    if (!server.perUserAuth) {
+      return server.id;
     }
-    return server.perUserAuth && userId ? `${id}:${userId}` : id;
+    if (!userId) {
+      throw new Error(
+        `MCP server ${server.id} requires authenticated user context`,
+      );
+    }
+    return `${server.id}:${userId}`;
   }
 
-  async getClient(id: string, userId?: string) {
-    await this.waitInitialized();
-    const server = await this.storage.get(id);
+  private requireAccessibleServer(context: MCPUserContext, id: string) {
+    const server = context.servers.find((s) => s.id === id);
     if (!server) {
-      throw new Error(`Client ${id} not found`);
+      throw new Error(`MCP server ${id} is not accessible`);
     }
+    return server;
+  }
 
-    const clientId = await this.getClientId(id, userId);
+  async getClient(id: string, context: MCPUserContext) {
+    await this.waitInitialized();
+    const server = this.requireAccessibleServer(context, id);
+
+    const clientId = this.getClientIdForServer(server, context.userId);
 
     const client = this.clients.get(clientId);
     if (!client) {
-      await this.addClient(id, server.name, server.config, userId);
+      await this.addClient(id, server.name, server.config, context.userId);
     }
 
     return this.clients.get(clientId);
@@ -351,22 +386,21 @@ export class MCPClientsManager {
     serverName: string,
     toolName: string,
     input: unknown,
-    userId?: string,
+    context: MCPUserContext,
   ) {
-    const configs = await this.storage.loadAll();
-    const server = configs.find((s) => s.name === serverName);
+    const server = context.servers.find((s) => s.name === serverName);
     if (!server) {
-      throw new Error(`Client ${serverName} not found`);
+      throw new Error(`MCP server ${serverName} is not accessible`);
     }
-    return this.toolCall(server.id, toolName, input, userId);
+    return this.toolCall(server.id, toolName, input, context);
   }
   async toolCall(
     id: string,
     toolName: string,
     input: unknown,
-    userId?: string,
+    context: MCPUserContext,
   ) {
-    return safe(() => this.getClient(id, userId))
+    return safe(() => this.getClient(id, context))
       .map((client) => {
         if (!client) throw new Error(`Client ${id} not found`);
         return client.client;
@@ -376,10 +410,11 @@ export class MCPClientsManager {
         if (res?.content && Array.isArray(res.content)) {
           const parsedResult = {
             ...res,
-            content: res.content.map((c: any) => {
-              if (c?.type === "text" && c?.text) {
+            content: res.content.map((c: unknown) => {
+              if (isTextToolContent(c)) {
                 const parsed = safeJSONParse(c.text);
                 return {
+                  ...c,
                   type: "text",
                   text: parsed.success ? parsed.value : c.text,
                 };
