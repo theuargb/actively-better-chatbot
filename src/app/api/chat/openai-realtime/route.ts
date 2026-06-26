@@ -7,7 +7,7 @@ import {
   mergeSystemPrompt,
 } from "../shared.chat";
 import {
-  buildCurrentDateTimeSystemPrompt,
+  buildCurrentDateSystemPrompt,
   buildMcpServerCustomizationsSystemPrompt,
   buildSpeechSystemStaticPrompt,
 } from "lib/ai/prompts";
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
       buildMcpServerCustomizationsSystemPrompt(mcpServerCustomizations),
     );
 
-    const dynamicSystemPrompt = buildCurrentDateTimeSystemPrompt();
+    const dynamicSystemPrompt = buildCurrentDateSystemPrompt();
 
     const bindingTools = [...openAITools, ...DEFAULT_VOICE_TOOLS];
 

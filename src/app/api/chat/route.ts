@@ -14,7 +14,7 @@ import { customModelProvider, isToolCallUnsupportedModel } from "lib/ai/models";
 import { agentRepository, chatRepository } from "lib/db/repository";
 import globalLogger from "logger";
 import {
-  buildCurrentDateTimeSystemPrompt,
+  buildCurrentDateSystemPrompt,
   buildMcpServerCustomizationsSystemPrompt,
   buildUserSystemStaticPrompt,
   buildToolCallUnsupportedModelSystemPrompt,
@@ -269,7 +269,7 @@ export async function POST(request: Request) {
           !supportToolCall && buildToolCallUnsupportedModelSystemPrompt,
         );
 
-        const dynamicSystemPrompt = buildCurrentDateTimeSystemPrompt();
+        const dynamicSystemPrompt = buildCurrentDateSystemPrompt();
 
         const IMAGE_TOOL: Record<string, Tool> = useImageTool
           ? {

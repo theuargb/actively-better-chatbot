@@ -8,7 +8,7 @@ import {
 import { customModelProvider } from "lib/ai/models";
 import globalLogger from "logger";
 import {
-  buildCurrentDateTimeSystemPrompt,
+  buildCurrentDateSystemPrompt,
   buildUserSystemStaticPrompt,
 } from "lib/ai/prompts";
 import { getUserPreferences } from "lib/user/server";
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
         .filter(Boolean)
         .join("\n\n"),
       messages: [
-        { role: "system", content: buildCurrentDateTimeSystemPrompt() },
+        { role: "system", content: buildCurrentDateSystemPrompt() },
         ...convertToModelMessages(messages),
       ],
       experimental_transform: smoothStream({ chunking: "word" }),

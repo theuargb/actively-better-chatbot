@@ -6,7 +6,7 @@ import { createMCPToolId } from "./mcp/mcp-tool-id";
 import { format } from "date-fns";
 import { Agent } from "app-types/agent";
 
-const CURRENT_TIME_FORMAT = "EEEE, MMMM d, yyyy 'at' h:mm:ss a";
+const CURRENT_DATE_FORMAT = "EEEE, MMMM d, yyyy";
 
 export const CREATE_THREAD_TITLE_PROMPT = `
 You are a chat title generation expert.
@@ -57,15 +57,15 @@ export const buildUserSystemPrompt = (
 ) => {
   return [
     buildUserSystemStaticPrompt(user, userPreferences, agent),
-    buildCurrentDateTimeSystemPrompt(),
+    buildCurrentDateSystemPrompt(),
   ]
     .filter(Boolean)
     .join("\n\n");
 };
 
-export const buildCurrentDateTimeSystemPrompt = () => {
-  const currentTime = format(new Date(), CURRENT_TIME_FORMAT);
-  return `The current date and time is ${currentTime}.`;
+export const buildCurrentDateSystemPrompt = () => {
+  const currentDate = format(new Date(), CURRENT_DATE_FORMAT);
+  return `The current date is ${currentDate}.`;
 };
 
 export const buildUserSystemStaticPrompt = (
@@ -156,7 +156,7 @@ export const buildSpeechSystemPrompt = (
 ) => {
   return [
     buildSpeechSystemStaticPrompt(user, userPreferences, agent),
-    buildCurrentDateTimeSystemPrompt(),
+    buildCurrentDateSystemPrompt(),
   ]
     .filter(Boolean)
     .join("\n\n");
