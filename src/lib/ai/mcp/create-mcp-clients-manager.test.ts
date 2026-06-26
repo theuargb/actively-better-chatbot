@@ -280,6 +280,40 @@ describe("MCPClientsManager", () => {
       );
     });
 
+    it("should persist per-user auth client with creator context", async () => {
+      const serverToSave = {
+        name: "new-server",
+        config: mockServerConfig,
+        userId: "test-user-id",
+        perUserAuth: true,
+      };
+
+      vi.mocked(mockStorage.save).mockResolvedValue({
+        ...serverToSave,
+        id: "new-server-id",
+        visibility: "private" as const,
+      });
+      vi.mocked(mockStorage.get).mockResolvedValue({
+        ...serverToSave,
+        id: "new-server-id",
+        visibility: "private" as const,
+      });
+
+      const result = await manager.persistClient(serverToSave);
+
+      expect(result).toEqual({ client: mockClient, name: "new-server" });
+      expect(mockCreateMCPClient).toHaveBeenCalledWith(
+        "new-server-id",
+        "new-server",
+        mockServerConfig,
+        expect.objectContaining({
+          autoDisconnectSeconds: 1800,
+          perUserAuth: true,
+          userId: "test-user-id",
+        }),
+      );
+    });
+
     it("should persist client without storage", async () => {
       manager = new MCPClientsManager();
       await manager.init();

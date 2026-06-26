@@ -67,6 +67,10 @@ import dynamic from "next/dynamic";
 import { notify } from "lib/notify";
 import { ModelProviderIcon } from "ui/model-provider-icon";
 import { BACKGROUND_COLORS, EMOJI_DATA } from "lib/const";
+import type { PieChartProps } from "./tool-invocation/pie-chart";
+import type { BarChartProps } from "./tool-invocation/bar-chart";
+import type { LineChartProps } from "./tool-invocation/line-chart";
+import type { InteractiveTableProps } from "./tool-invocation/interactive-table";
 
 type MessagePart = UIMessage["parts"][number];
 type TextMessagePart = Extract<MessagePart, { type: "text" }>;
@@ -103,13 +107,66 @@ interface ToolMessagePartProps {
   showActions: boolean;
   isLast?: boolean;
   isManualToolInvocation?: boolean;
+  prevMessage?: UIMessage;
+  threadId?: string;
   addToolResult?: UseChatHelpers<UIMessage>["addToolResult"];
   isError?: boolean;
   setMessages?: UseChatHelpers<UIMessage>["setMessages"];
+  sendMessage?: UseChatHelpers<UIMessage>["sendMessage"];
   readonly?: boolean;
 }
 
 const MAX_TEXT_LENGTH = 600;
+
+async function authorizeMcpAndReplay({
+  serverId,
+  replayMessage,
+  blockedMessageId,
+  threadId,
+  setMessages,
+  sendMessage,
+  setIsAuthorizing,
+}: {
+  serverId: string;
+  replayMessage: UIMessage;
+  blockedMessageId?: string;
+  threadId?: string;
+  setMessages?: UseChatHelpers<UIMessage>["setMessages"];
+  sendMessage?: UseChatHelpers<UIMessage>["sendMessage"];
+  setIsAuthorizing: (value: boolean) => void;
+}) {
+  try {
+    setIsAuthorizing(true);
+    const authorized = await redriectMcpOauth(serverId);
+
+    if (!authorized || !setMessages || !sendMessage) {
+      return;
+    }
+
+    if (threadId && blockedMessageId) {
+      await deleteMessagesByChatIdAfterTimestampAction(blockedMessageId);
+    }
+
+    setMessages((messages) => {
+      const replayIndex = messages.findIndex((m) => m.id === replayMessage.id);
+
+      if (replayIndex === -1) {
+        return messages;
+      }
+
+      return messages.slice(0, replayIndex);
+    });
+
+    sendMessage(replayMessage);
+  } catch (error) {
+    toast.error(
+      error instanceof Error ? error.message : "Authentication failed",
+    );
+  } finally {
+    setIsAuthorizing(false);
+  }
+}
+
 export const UserMessagePart = memo(
   function UserMessagePart({
     part,
@@ -125,6 +182,7 @@ export const UserMessagePart = memo(
     const t = useTranslations();
     const [mode, setMode] = useState<"view" | "edit">("view");
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isAuthorizing, setIsAuthorizing] = useState(false);
     const [expanded, setExpanded] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
     const scrolledRef = useRef(false);
@@ -255,9 +313,18 @@ export const UserMessagePart = memo(
         {mentionAuthRequired && (
           <div className="w-full max-w-md mt-1">
             <Alert
-              className="cursor-pointer hover:bg-accent/10 transition-colors border-primary/50 py-2"
+              className={cn(
+                "cursor-pointer hover:bg-accent/10 transition-colors border-primary/50 py-2",
+                isAuthorizing && "opacity-70 pointer-events-none",
+              )}
               onClick={async () => {
-                await redriectMcpOauth(mentionAuthRequired.id);
+                await authorizeMcpAndReplay({
+                  serverId: mentionAuthRequired.id,
+                  replayMessage: message,
+                  setMessages,
+                  sendMessage,
+                  setIsAuthorizing,
+                });
               }}
               role="button"
               tabIndex={0}
@@ -811,7 +878,10 @@ export const ToolMessagePart = memo(
     addToolResult,
     isError,
     messageId,
+    prevMessage,
+    threadId,
     setMessages,
+    sendMessage,
     isManualToolInvocation,
   }: ToolMessagePartProps) => {
     const t = useTranslations("");
@@ -828,6 +898,7 @@ export const ToolMessagePart = memo(
     const { copied: copiedInput, copy: copyInput } = useCopy();
     const { copied: copiedOutput, copy: copyOutput } = useCopy();
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isAuthorizing, setIsAuthorizing] = useState(false);
 
     // Handle keyboard shortcuts for approve/reject actions
     useEffect(() => {
@@ -888,7 +959,7 @@ export const ToolMessagePart = memo(
     }, [messageId]);
 
     const onToolCallDirect = useCallback(
-      (result: any) => {
+      (result: unknown) => {
         addToolResult?.({
           tool: toolName,
           toolCallId,
@@ -966,24 +1037,30 @@ export const ToolMessagePart = memo(
         switch (toolName) {
           case DefaultToolName.CreatePieChart:
             return (
-              <PieChart key={`${toolCallId}-${toolName}`} {...(input as any)} />
+              <PieChart
+                key={`${toolCallId}-${toolName}`}
+                {...(input as PieChartProps)}
+              />
             );
           case DefaultToolName.CreateBarChart:
             return (
-              <BarChart key={`${toolCallId}-${toolName}`} {...(input as any)} />
+              <BarChart
+                key={`${toolCallId}-${toolName}`}
+                {...(input as BarChartProps)}
+              />
             );
           case DefaultToolName.CreateLineChart:
             return (
               <LineChart
                 key={`${toolCallId}-${toolName}`}
-                {...(input as any)}
+                {...(input as LineChartProps)}
               />
             );
           case DefaultToolName.CreateTable:
             return (
               <InteractiveTable
                 key={`${toolCallId}-${toolName}`}
-                {...(input as any)}
+                {...(input as InteractiveTableProps)}
               />
             );
         }
@@ -1109,9 +1186,25 @@ export const ToolMessagePart = memo(
                 ) : isMcpAuthRequiredToolResult(result) ? (
                   <div className="mt-2">
                     <Alert
-                      className="cursor-pointer hover:bg-accent/10 transition-colors border-primary/50"
+                      className={cn(
+                        "cursor-pointer hover:bg-accent/10 transition-colors border-primary/50",
+                        isAuthorizing && "opacity-70 pointer-events-none",
+                      )}
                       onClick={async () => {
-                        await redriectMcpOauth(result._mcpServerId);
+                        if (!prevMessage) {
+                          await redriectMcpOauth(result._mcpServerId);
+                          return;
+                        }
+
+                        await authorizeMcpAndReplay({
+                          serverId: result._mcpServerId,
+                          replayMessage: prevMessage,
+                          blockedMessageId: messageId,
+                          threadId,
+                          setMessages,
+                          sendMessage,
+                          setIsAuthorizing,
+                        });
                       }}
                       role="button"
                       tabIndex={0}

@@ -260,19 +260,21 @@ export class MCPClientsManager {
    * Persists a new client configuration to storage and adds the client instance to memory
    */
   async persistClient(server: McpServerInsert) {
-    let id = server.name;
-    if (this.storage) {
-      const entity = await this.storage.save(server);
-      id = entity.id;
-    }
-    await this.addClient(id, server.name, server.config).catch((err) => {
+    const entity = await this.storage.save(server);
+    await this.addClient(
+      entity.id,
+      entity.name,
+      entity.config,
+      entity.userId,
+    ).catch((err) => {
       if (!server.id) {
-        void this.removeClient(id);
+        void this.removeClient(entity.id);
       }
       throw err;
     });
 
-    return this.clients.get(id)!;
+    const clientId = this.getClientIdForServer(entity, entity.userId);
+    return this.clients.get(clientId)!;
   }
 
   /**
