@@ -2,8 +2,34 @@
 import { appStore } from "@/app/store";
 import useSWR, { SWRConfiguration } from "swr";
 import { handleErrorWithToast } from "ui/shared-toast";
-import { fetcher, objectFlow } from "lib/utils";
-import { MCPServerInfo } from "app-types/mcp";
+import { fetcher } from "lib/utils";
+import { AllowedMCPServer, MCPServerInfo } from "app-types/mcp";
+
+function getAllowedMcpServersWithDefaults(
+  mcpList: MCPServerInfo[],
+  previousAllowedMcpServers?: Record<string, AllowedMCPServer>,
+): Record<string, AllowedMCPServer> {
+  return mcpList.reduce(
+    (acc, server) => {
+      const availableTools = server.toolInfo.map((tool) => tool.name);
+      const previous = previousAllowedMcpServers?.[server.id];
+
+      acc[server.id] = previous
+        ? {
+            ...previous,
+            tools: previous.tools.filter((tool) =>
+              availableTools.includes(tool),
+            ),
+          }
+        : {
+            tools: availableTools,
+          };
+
+      return acc;
+    },
+    {} as Record<string, AllowedMCPServer>,
+  );
+}
 
 export function useMcpList(options?: SWRConfiguration) {
   return useSWR<MCPServerInfo[]>("/api/mcp/list", fetcher, {
@@ -13,11 +39,11 @@ export function useMcpList(options?: SWRConfiguration) {
     fallbackData: [],
     onError: handleErrorWithToast,
     onSuccess: (data) => {
-      const ids = data.map((v) => v.id);
       appStore.setState((prev) => ({
         mcpList: data,
-        allowedMcpServers: objectFlow(prev.allowedMcpServers || {}).filter(
-          (_, key) => ids.includes(key),
+        allowedMcpServers: getAllowedMcpServersWithDefaults(
+          data,
+          prev.allowedMcpServers,
         ),
       }));
     },
