@@ -14,7 +14,6 @@ import { customModelProvider, isToolCallUnsupportedModel } from "lib/ai/models";
 import {
   agentRepository,
   chatRepository,
-  mcpOAuthRepository,
   mcpRepository,
 } from "lib/db/repository";
 import globalLogger from "logger";
@@ -28,8 +27,6 @@ import {
   ChatMention,
   ChatMetadata,
 } from "app-types/chat";
-import { isMcpAuthRequiredToolResult, McpServerSelect } from "app-types/mcp";
-import type { MCPUserContext } from "lib/ai/mcp/create-mcp-clients-manager";
 
 import { errorIf, safe } from "ts-safe";
 
@@ -56,7 +53,6 @@ import { nanoBananaTool, openaiImageTool } from "lib/ai/tools/image";
 import { ImageToolName } from "lib/ai/tools";
 import { buildCsvIngestionPreviewParts } from "@/lib/ai/ingest/csv-ingest";
 import { serverFileStorage } from "lib/file-storage";
-import { extractMCPToolId } from "lib/ai/mcp/mcp-tool-id";
 
 const logger = globalLogger.withDefaults({
   message: colorize("blackBright", `Chat API: `),
@@ -78,102 +74,6 @@ type ChatFileAttachmentPart = {
 
 type ChatAttachmentPart = ChatFileAttachmentPart | ChatSourceUrlPart;
 
-function getMentionedMcpServerIds(mentions: ChatMention[]) {
-  const serverIds = new Set<string>();
-
-  for (const mention of mentions) {
-    if (mention.type === "mcpServer" || mention.type === "mcpTool") {
-      serverIds.add(mention.serverId);
-    }
-  }
-
-  return serverIds;
-}
-
-function getVisibleMcpMentionedServerIds(
-  message: UIMessage,
-  servers: McpServerSelect[],
-) {
-  const serverIds = new Set<string>();
-  const text = message.parts
-    .filter((part) => part.type === "text")
-    .map((part) => part.text)
-    .join("\n");
-
-  const serverNames = new Set<string>();
-
-  for (const match of text.matchAll(/mcp\("([^"]+)"\)/g)) {
-    if (match[1]) {
-      serverNames.add(match[1]);
-    }
-  }
-
-  for (const match of text.matchAll(/tool\("([^"]+)"\)/g)) {
-    if (match[1]) {
-      const { serverName } = extractMCPToolId(match[1]);
-      if (serverName) {
-        serverNames.add(serverName);
-      }
-    }
-  }
-
-  for (const serverName of serverNames) {
-    const server = servers.find((candidate) => candidate.name === serverName);
-    if (server) {
-      serverIds.add(server.id);
-    }
-  }
-
-  return serverIds;
-}
-
-async function findUnauthenticatedMentionedMcpServer(
-  directMentions: ChatMention[],
-  message: UIMessage,
-  mcpContext: MCPUserContext,
-): Promise<McpServerSelect | null> {
-  const mentionedMcpServerIds = new Set([
-    ...getMentionedMcpServerIds(directMentions),
-    ...getVisibleMcpMentionedServerIds(message, mcpContext.servers),
-  ]);
-
-  if (mentionedMcpServerIds.size === 0) {
-    return null;
-  }
-
-  for (const server of mcpContext.servers) {
-    if (!mentionedMcpServerIds.has(server.id) || !server.perUserAuth) {
-      continue;
-    }
-
-    const session = await mcpOAuthRepository.getAuthenticatedSession(
-      server.id,
-      mcpContext.userId,
-    );
-
-    if (!session?.tokens) {
-      return server;
-    }
-  }
-
-  return null;
-}
-
-function stopWhenMcpAuthRequired({
-  steps,
-}: {
-  steps: readonly {
-    readonly toolResults: readonly { readonly output: unknown }[];
-  }[];
-}) {
-  const lastStep = steps.at(-1);
-  return (
-    lastStep?.toolResults.some((toolResult) =>
-      isMcpAuthRequiredToolResult(toolResult.output),
-    ) ?? false
-  );
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
@@ -190,8 +90,6 @@ function isExistingAttachmentPart(part: unknown): part is ChatAttachmentPart {
 }
 
 export async function POST(request: Request) {
-  let skippedAssistantGeneration = false;
-
   try {
     const json = await request.json();
 
@@ -211,7 +109,6 @@ export async function POST(request: Request) {
       mentions = [],
       attachments = [],
     } = chatApiSchemaRequestBodySchema.parse(json);
-    const directMentions = [...mentions];
 
     const model = customModelProvider.getModel(chatModel);
 
@@ -351,27 +248,6 @@ export async function POST(request: Request) {
           servers: await mcpRepository.selectAllForUser(session.user.id),
         };
 
-        const unauthenticatedMentionedServer =
-          await findUnauthenticatedMentionedMcpServer(
-            directMentions,
-            message,
-            mcpContext,
-          );
-
-        if (unauthenticatedMentionedServer) {
-          skippedAssistantGeneration = true;
-          logger.info(
-            `auth required before generation: ${unauthenticatedMentionedServer.name}`,
-          );
-          await chatRepository.upsertMessage({
-            threadId: thread!.id,
-            role: message.role,
-            parts: message.parts.map(convertToSavePart),
-            id: message.id,
-          });
-          return;
-        }
-
         const MCP_TOOLS = await safe()
           .map(errorIf(() => !isToolCallAllowed && "Not allowed"))
           .map(() =>
@@ -405,7 +281,7 @@ export async function POST(request: Request) {
           .orElse({});
         const inProgressToolParts = extractInProgressToolPart(message);
         if (inProgressToolParts.length) {
-          const manualToolOutputs = await Promise.all(
+          await Promise.all(
             inProgressToolParts.map(async (part) => {
               const output = await manualToolExecuteByLastMessage(
                 part,
@@ -423,10 +299,6 @@ export async function POST(request: Request) {
               return output;
             }),
           );
-
-          if (manualToolOutputs.some(isMcpAuthRequiredToolResult)) {
-            return;
-          }
         }
 
         const userPreferences = thread?.userPreferences || undefined;
@@ -500,7 +372,7 @@ export async function POST(request: Request) {
           experimental_transform: smoothStream({ chunking: "word" }),
           maxRetries: 2,
           tools: vercelAITooles,
-          stopWhen: [stepCountIs(10), stopWhenMcpAuthRequired],
+          stopWhen: stepCountIs(10),
           toolChoice: "auto",
           abortSignal: request.signal,
         });
@@ -519,10 +391,6 @@ export async function POST(request: Request) {
 
       generateId: generateUUID,
       onFinish: async ({ responseMessage }) => {
-        if (skippedAssistantGeneration) {
-          return;
-        }
-
         if (responseMessage.id == message.id) {
           await chatRepository.upsertMessage({
             threadId: thread!.id,

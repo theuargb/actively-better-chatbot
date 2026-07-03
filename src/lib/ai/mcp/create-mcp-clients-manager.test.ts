@@ -23,6 +23,7 @@ vi.mock("lib/utils", () => ({
     isLocked: false,
   })),
   generateUUID: vi.fn(() => "mock-uuid-12345678"),
+  toAny: vi.fn((value) => value),
 }));
 
 vi.mock("ts-safe", () => ({
@@ -70,7 +71,7 @@ describe("MCPClientsManager", () => {
     updatedAt: new Date(),
   };
 
-  const mockContext = (servers = [mockServer]) => ({
+  const mockContext = (servers: any[] = [mockServer]) => ({
     userId: "test-user-id",
     servers,
   });
@@ -509,6 +510,96 @@ describe("MCPClientsManager", () => {
         ]),
       );
       expect(tools).toEqual({});
+    });
+
+    it("should expose cached public per-user tools without connecting", async () => {
+      const cachedToolInfo = [
+        {
+          name: "cached-tool",
+          description: "Cached public tool",
+          inputSchema: { type: "object" },
+        },
+      ];
+      const server = {
+        ...mockServer,
+        id: "shared-per-user",
+        name: "shared-per-user",
+        userId: "owner-user-id",
+        visibility: "public" as const,
+        perUserAuth: true,
+        toolInfo: cachedToolInfo,
+      };
+
+      const tools = await manager.tools(mockContext([server]));
+
+      expect(mockCreateMCPClient).toHaveBeenCalledWith(
+        "shared-per-user",
+        "shared-per-user",
+        mockServerConfig,
+        expect.objectContaining({
+          autoDisconnectSeconds: 1800,
+          initialToolInfo: cachedToolInfo,
+          perUserAuth: true,
+          userId: "test-user-id",
+        }),
+      );
+      expect(mockClient.connect).not.toHaveBeenCalled();
+      expect(Object.keys(tools)).toEqual(["shared-per-user:cached-tool"]);
+      expect(tools["shared-per-user:cached-tool"]).toMatchObject({
+        _mcpServerId: "shared-per-user",
+        _mcpServerName: "shared-per-user",
+        _originToolName: "cached-tool",
+      });
+    });
+
+    it("should not pre-authorize uncached per-user servers during discovery", async () => {
+      const server = {
+        ...mockServer,
+        id: "uncached-per-user",
+        name: "uncached-per-user",
+        visibility: "public" as const,
+        perUserAuth: true,
+        toolInfo: null,
+      };
+
+      const tools = await manager.tools(mockContext([server]));
+
+      expect(mockCreateMCPClient).not.toHaveBeenCalled();
+      expect(mockClient.connect).not.toHaveBeenCalled();
+      expect(tools).toEqual({});
+    });
+
+    it("should discover uncached shared-auth tools by connecting", async () => {
+      mockClient.toolInfo = [
+        {
+          name: "live-tool",
+          description: "Live tool",
+          inputSchema: { type: "object" },
+        },
+      ];
+      const server = {
+        ...mockServer,
+        id: "shared-auth",
+        name: "shared-auth",
+        visibility: "public" as const,
+        perUserAuth: false,
+        toolInfo: null,
+      };
+
+      const tools = await manager.tools(mockContext([server]));
+
+      expect(mockCreateMCPClient).toHaveBeenCalledWith(
+        "shared-auth",
+        "shared-auth",
+        mockServerConfig,
+        expect.objectContaining({
+          autoDisconnectSeconds: 1800,
+          perUserAuth: false,
+          userId: "test-user-id",
+        }),
+      );
+      expect(mockClient.connect).toHaveBeenCalled();
+      expect(Object.keys(tools)).toEqual(["shared-auth:live-tool"]);
     });
   });
 

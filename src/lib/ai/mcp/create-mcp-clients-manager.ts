@@ -118,30 +118,36 @@ export class MCPClientsManager {
           await this.storage.init(this);
           const configs = await this.storage.loadAll();
           await Promise.all(
-            configs.map(
-              ({ id, name, config, toolInfo, lastConnectionStatus }) => {
-                if (toolInfo?.length) {
-                  this.logger.info(
-                    `Loading cached tool info for ${name} (${toolInfo.length} tools)`,
-                  );
-                  this.addClientWithCachedToolInfo(id, name, config, toolInfo);
-                  return Promise.resolve();
-                }
-                // Register errored servers without connecting
-                // — user can manually refresh these from the UI
-                if (lastConnectionStatus === "error") {
-                  this.logger.info(
-                    `Registering ${name} without connect (last status: error)`,
-                  );
-                  this.addClientWithCachedToolInfo(id, name, config, []);
-                  return Promise.resolve();
-                }
-                // New servers or servers without cache — connect in background
-                return this.addClient(id, name, config).catch(() => {
-                  `ignore error`;
-                });
-              },
-            ),
+            configs.map((server) => {
+              const { id, name, config, toolInfo, lastConnectionStatus } =
+                server;
+              if (server.perUserAuth) {
+                this.logger.info(
+                  `Skipping global client for per-user MCP server ${name}`,
+                );
+                return Promise.resolve();
+              }
+              if (toolInfo?.length) {
+                this.logger.info(
+                  `Loading cached tool info for ${name} (${toolInfo.length} tools)`,
+                );
+                this.addClientWithCachedToolInfo(server);
+                return Promise.resolve();
+              }
+              // Register errored servers without connecting
+              // — user can manually refresh these from the UI
+              if (lastConnectionStatus === "error") {
+                this.logger.info(
+                  `Registering ${name} without connect (last status: error)`,
+                );
+                this.addClientWithCachedToolInfo(server);
+                return Promise.resolve();
+              }
+              // New servers or servers without cache — connect in background
+              return this.addClient(id, name, config).catch(() => {
+                `ignore error`;
+              });
+            }),
           );
         }
       })
@@ -158,7 +164,7 @@ export class MCPClientsManager {
   async tools(
     context: MCPUserContext,
   ): Promise<Record<string, VercelAIMcpTool>> {
-    await this.waitInitialized();
+    await this.ensureClientsForContext(context);
 
     const tools: Record<string, VercelAIMcpTool> = {};
 
@@ -204,26 +210,58 @@ export class MCPClientsManager {
    * The connection will happen lazily when a tool is actually called.
    */
   private addClientWithCachedToolInfo(
-    id: string,
-    name: string,
-    serverConfig: MCPServerConfig,
-    cachedToolInfo: MCPToolInfo[],
+    server: McpServerSelect,
+    userId?: string,
   ) {
-    if (this.clients.has(id)) {
-      const prevClient = this.clients.get(id)!;
+    const clientId = this.getClientIdForServer(server, userId);
+    if (this.clients.has(clientId)) {
+      const prevClient = this.clients.get(clientId)!;
       void prevClient.client.disconnect();
     }
-    const client = createMCPClient(id, name, serverConfig, {
+    const client = createMCPClient(server.id, server.name, server.config, {
       autoDisconnectSeconds: this.autoDisconnectSeconds,
-      initialToolInfo: cachedToolInfo,
+      initialToolInfo: server.toolInfo ?? [],
+      userId,
+      perUserAuth: server.perUserAuth,
       onToolInfoUpdate: (toolInfo) => {
-        this.storage?.updateToolInfo?.(id, toolInfo);
+        this.storage?.updateToolInfo?.(server.id, toolInfo);
       },
       onConnectionStatusChange: (status) => {
-        this.storage?.updateConnectionStatus?.(id, status);
+        this.storage?.updateConnectionStatus?.(server.id, status);
       },
     });
-    this.clients.set(id, { client, name });
+    this.clients.set(clientId, { client, name: server.name });
+  }
+
+  async ensureClientsForContext(context: MCPUserContext) {
+    await this.waitInitialized();
+    await Promise.allSettled(
+      context.servers.map(async (server) => {
+        const clientId = this.getClientIdForServer(server, context.userId);
+        if (this.clients.has(clientId)) return;
+
+        if (
+          server.toolInfo?.length ||
+          (!server.perUserAuth && server.lastConnectionStatus === "error")
+        ) {
+          this.addClientWithCachedToolInfo(server, context.userId);
+          return;
+        }
+
+        if (server.perUserAuth) {
+          return;
+        }
+
+        await this.addClient(
+          server.id,
+          server.name,
+          server.config,
+          context.userId,
+        ).catch(() => {
+          `ignore error`;
+        });
+      }),
+    );
   }
 
   /**

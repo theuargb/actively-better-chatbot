@@ -248,29 +248,9 @@ export const CallToolResultSchema = z.object({
   content: z.array(ContentUnion).default([]),
   structuredContent: z.object({}).passthrough().optional(),
   isError: z.boolean().optional(),
-  _mcpAuthRequired: z.boolean().optional(),
-  _mcpServerId: z.string().optional(),
 });
 
 export type CallToolResult = z.infer<typeof CallToolResultSchema>;
-
-export type McpAuthRequiredToolResult = CallToolResult & {
-  _mcpAuthRequired: true;
-  _mcpServerId: string;
-};
-
-export function isMcpAuthRequiredToolResult(
-  value: unknown,
-): value is McpAuthRequiredToolResult {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "_mcpAuthRequired" in value &&
-    "_mcpServerId" in value &&
-    (value as { _mcpAuthRequired?: unknown })._mcpAuthRequired === true &&
-    typeof (value as { _mcpServerId?: unknown })._mcpServerId === "string"
-  );
-}
 
 export type McpOAuthSession = {
   id: string;

@@ -1,5 +1,6 @@
 "use client";
 
+import { mutate } from "swr";
 import { FileUIPart, getToolName, ToolUIPart, UIMessage } from "ai";
 import {
   Check,
@@ -39,14 +40,13 @@ import {
 import { toast } from "sonner";
 import { safe } from "ts-safe";
 import { ChatMetadata, ChatModel, ManualToolConfirmTag } from "app-types/chat";
-import { isMcpAuthRequiredToolResult } from "app-types/mcp";
 
 import { useTranslations } from "next-intl";
 import { extractMCPToolId } from "lib/ai/mcp/mcp-tool-id";
 import { Separator } from "ui/separator";
-import { Alert, AlertDescription, AlertTitle } from "ui/alert";
 import { appStore } from "@/app/store";
-import { redriectMcpOauth } from "lib/ai/mcp/oauth-redirect";
+import { useMcpList } from "@/hooks/queries/use-mcp-list";
+import { MCPAuthDialog } from "./mcp-auth-dialog";
 
 import { TextShimmer } from "ui/text-shimmer";
 import equal from "lib/equal";
@@ -118,55 +118,6 @@ interface ToolMessagePartProps {
 
 const MAX_TEXT_LENGTH = 600;
 
-async function authorizeMcpAndReplay({
-  serverId,
-  replayMessage,
-  blockedMessageId,
-  threadId,
-  setMessages,
-  sendMessage,
-  setIsAuthorizing,
-}: {
-  serverId: string;
-  replayMessage: UIMessage;
-  blockedMessageId?: string;
-  threadId?: string;
-  setMessages?: UseChatHelpers<UIMessage>["setMessages"];
-  sendMessage?: UseChatHelpers<UIMessage>["sendMessage"];
-  setIsAuthorizing: (value: boolean) => void;
-}) {
-  try {
-    setIsAuthorizing(true);
-    const authorized = await redriectMcpOauth(serverId);
-
-    if (!authorized || !setMessages || !sendMessage) {
-      return;
-    }
-
-    if (threadId && blockedMessageId) {
-      await deleteMessagesByChatIdAfterTimestampAction(blockedMessageId);
-    }
-
-    setMessages((messages) => {
-      const replayIndex = messages.findIndex((m) => m.id === replayMessage.id);
-
-      if (replayIndex === -1) {
-        return messages;
-      }
-
-      return messages.slice(0, replayIndex);
-    });
-
-    sendMessage(replayMessage);
-  } catch (error) {
-    toast.error(
-      error instanceof Error ? error.message : "Authentication failed",
-    );
-  } finally {
-    setIsAuthorizing(false);
-  }
-}
-
 export const UserMessagePart = memo(
   function UserMessagePart({
     part,
@@ -182,7 +133,6 @@ export const UserMessagePart = memo(
     const t = useTranslations();
     const [mode, setMode] = useState<"view" | "edit">("view");
     const [isDeleting, setIsDeleting] = useState(false);
-    const [isAuthorizing, setIsAuthorizing] = useState(false);
     const [expanded, setExpanded] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
     const scrolledRef = useRef(false);
@@ -222,43 +172,6 @@ export const UserMessagePart = memo(
         ref.current?.scrollIntoView({ behavior: "smooth" });
       }
     }, [status]);
-
-    const mcpList = appStore((state) => state.mcpList);
-
-    const mentionAuthRequired = useMemo(() => {
-      if (!isLast) return null;
-      const mcpMentions = part.text.match(/mcp\("([^"]+)"\)/g);
-      const toolMentions = part.text.match(/tool\("([^"]+)"\)/g);
-
-      if (!mcpMentions && !toolMentions) return null;
-
-      const serverNames = new Set<string>();
-      mcpMentions?.forEach((m) => {
-        const name = m.match(/mcp\("([^"]+)"\)/)?.[1];
-        if (name) serverNames.add(name);
-      });
-      toolMentions?.forEach((m) => {
-        const toolName = m.match(/tool\("([^"]+)"\)/)?.[1];
-        if (toolName) {
-          const { serverName } = extractMCPToolId(toolName);
-          if (serverName) serverNames.add(serverName);
-        }
-      });
-
-      for (const serverName of serverNames) {
-        const server = mcpList.find((s) => s.name === serverName);
-        if (
-          server &&
-          (server.status === "authorizing" ||
-            (server.perUserAuth &&
-              !server.isAuthorized &&
-              server.status === "disconnected"))
-        ) {
-          return server;
-        }
-      }
-      return null;
-    }, [part.text, mcpList, isLast]);
 
     if (mode === "edit" && setMessages && sendMessage) {
       return (
@@ -310,35 +223,6 @@ export const UserMessagePart = memo(
             </Button>
           )}
         </div>
-        {mentionAuthRequired && (
-          <div className="w-full max-w-md mt-1">
-            <Alert
-              className={cn(
-                "cursor-pointer hover:bg-accent/10 transition-colors border-primary/50 py-2",
-                isAuthorizing && "opacity-70 pointer-events-none",
-              )}
-              onClick={async () => {
-                await authorizeMcpAndReplay({
-                  serverId: mentionAuthRequired.id,
-                  replayMessage: message,
-                  setMessages,
-                  sendMessage,
-                  setIsAuthorizing,
-                });
-              }}
-              role="button"
-              tabIndex={0}
-            >
-              <TriangleAlert className="size-4 text-primary" />
-              <AlertTitle className="text-xs">
-                Authorization Required: {mentionAuthRequired.name}
-              </AlertTitle>
-              <AlertDescription className="text-[10px] leading-tight">
-                Click here to authorize this MCP server.
-              </AlertDescription>
-            </Alert>
-          </div>
-        )}
         {isLast && (
           <div className="flex w-full justify-end md:opacity-0 group-hover/message:opacity-100 transition-opacity duration-300">
             <Tooltip>
@@ -878,13 +762,11 @@ export const ToolMessagePart = memo(
     addToolResult,
     isError,
     messageId,
-    prevMessage,
-    threadId,
     setMessages,
-    sendMessage,
     isManualToolInvocation,
   }: ToolMessagePartProps) => {
     const t = useTranslations("");
+    const { data: mcpList } = useMcpList();
 
     const { output, toolCallId, state, input, errorText } = part;
 
@@ -898,7 +780,6 @@ export const ToolMessagePart = memo(
     const { copied: copiedInput, copy: copyInput } = useCopy();
     const { copied: copiedOutput, copy: copyOutput } = useCopy();
     const [isDeleting, setIsDeleting] = useState(false);
-    const [isAuthorizing, setIsAuthorizing] = useState(false);
 
     // Handle keyboard shortcuts for approve/reject actions
     useEffect(() => {
@@ -1072,6 +953,16 @@ export const ToolMessagePart = memo(
       return extractMCPToolId(toolName);
     }, [toolName]);
 
+    const mcpServer = useMemo(() => {
+      return mcpList?.find((s) => s.name === mcpServerName);
+    }, [mcpList, mcpServerName]);
+
+    useEffect(() => {
+      if (mcpServerName && (output as any)?.isError) {
+        mutate("/api/mcp/list");
+      }
+    }, [mcpServerName, output]);
+
     const isExpanded = useMemo(() => {
       return expanded || result === null || isWorkflowTool;
     }, [expanded, result, isWorkflowTool]);
@@ -1086,6 +977,8 @@ export const ToolMessagePart = memo(
 
     return (
       <div className="group w-full">
+        <MCPAuthDialog server={mcpServer} serverName={mcpServerName} />
+
         {CustomToolComponent ? (
           CustomToolComponent
         ) : (
@@ -1183,40 +1076,6 @@ export const ToolMessagePart = memo(
                   <WorkflowInvocation
                     result={result as VercelAIWorkflowToolStreamingResult}
                   />
-                ) : isMcpAuthRequiredToolResult(result) ? (
-                  <div className="mt-2">
-                    <Alert
-                      className={cn(
-                        "cursor-pointer hover:bg-accent/10 transition-colors border-primary/50",
-                        isAuthorizing && "opacity-70 pointer-events-none",
-                      )}
-                      onClick={async () => {
-                        if (!prevMessage) {
-                          await redriectMcpOauth(result._mcpServerId);
-                          return;
-                        }
-
-                        await authorizeMcpAndReplay({
-                          serverId: result._mcpServerId,
-                          replayMessage: prevMessage,
-                          blockedMessageId: messageId,
-                          threadId,
-                          setMessages,
-                          sendMessage,
-                          setIsAuthorizing,
-                        });
-                      }}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      <TriangleAlert className="size-4 text-primary" />
-                      <AlertTitle>Authorization Required</AlertTitle>
-                      <AlertDescription>
-                        Click here to authorize this MCP server and access its
-                        tools.
-                      </AlertDescription>
-                    </Alert>
-                  </div>
                 ) : (
                   <div
                     className={cn(
