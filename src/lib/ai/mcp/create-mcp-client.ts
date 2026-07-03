@@ -388,12 +388,30 @@ export class MCPClient {
   async callTool(toolName: string, input?: unknown) {
     const id = generateUUID();
     this.inProgressToolCallIds.push(id);
+    const authRequiredResult = () => ({
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: "OAuth authorization required",
+        },
+      ],
+      _mcpAuthRequired: true,
+      _mcpServerId: this.id,
+    });
     const execute = async () => {
-      const client = await this.connect();
-      return await client?.callTool({
-        name: toolName,
-        arguments: input as Record<string, unknown>,
-      });
+      try {
+        const client = await this.connect();
+        return await client?.callTool({
+          name: toolName,
+          arguments: input as Record<string, unknown>,
+        });
+      } catch (err) {
+        if (this.status === "authorizing") {
+          return authRequiredResult();
+        }
+        throw err;
+      }
     };
     return safe(() => this.logger.info("tool call", toolName))
       .ifOk(() => this.scheduleAutoDisconnect()) // disconnect if autoDisconnectSeconds is set
@@ -418,6 +436,9 @@ export class MCPClient {
           } catch {
             // Expected - triggers OAuth flow
           }
+        }
+        if (this.status === "authorizing") {
+          return authRequiredResult();
         }
         throw err;
       })

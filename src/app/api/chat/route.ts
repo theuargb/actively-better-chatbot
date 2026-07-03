@@ -27,6 +27,7 @@ import {
   ChatMention,
   ChatMetadata,
 } from "app-types/chat";
+import { isMcpAuthRequiredToolResult } from "app-types/mcp";
 
 import { errorIf, safe } from "ts-safe";
 
@@ -86,6 +87,16 @@ function isExistingAttachmentPart(part: unknown): part is ChatAttachmentPart {
   return (
     (part.type === "file" || part.type === "source-url") &&
     typeof part.url === "string"
+  );
+}
+
+function stopWhenMcpAuthRequired({
+  steps,
+}: { steps: Array<{ toolResults: Array<unknown> }> }) {
+  const lastStep = steps[steps.length - 1];
+  if (!lastStep) return false;
+  return lastStep.toolResults.some((tr: any) =>
+    isMcpAuthRequiredToolResult(tr?.output),
   );
 }
 
@@ -281,7 +292,7 @@ export async function POST(request: Request) {
           .orElse({});
         const inProgressToolParts = extractInProgressToolPart(message);
         if (inProgressToolParts.length) {
-          await Promise.all(
+          const manualToolOutputs = await Promise.all(
             inProgressToolParts.map(async (part) => {
               const output = await manualToolExecuteByLastMessage(
                 part,
@@ -299,6 +310,9 @@ export async function POST(request: Request) {
               return output;
             }),
           );
+          if (manualToolOutputs.some(isMcpAuthRequiredToolResult)) {
+            return;
+          }
         }
 
         const userPreferences = thread?.userPreferences || undefined;
@@ -372,7 +386,7 @@ export async function POST(request: Request) {
           experimental_transform: smoothStream({ chunking: "word" }),
           maxRetries: 2,
           tools: vercelAITooles,
-          stopWhen: stepCountIs(10),
+          stopWhen: [stepCountIs(10), stopWhenMcpAuthRequired],
           toolChoice: "auto",
           abortSignal: request.signal,
         });

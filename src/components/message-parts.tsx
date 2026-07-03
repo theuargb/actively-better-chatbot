@@ -43,6 +43,7 @@ import { ChatMetadata, ChatModel, ManualToolConfirmTag } from "app-types/chat";
 
 import { useTranslations } from "next-intl";
 import { extractMCPToolId } from "lib/ai/mcp/mcp-tool-id";
+import { isMcpAuthRequiredToolResult } from "app-types/mcp";
 import { Separator } from "ui/separator";
 import { appStore } from "@/app/store";
 import { useMcpList } from "@/hooks/queries/use-mcp-list";
@@ -117,6 +118,40 @@ interface ToolMessagePartProps {
 }
 
 const MAX_TEXT_LENGTH = 600;
+
+async function replayMessageAfterMcpAuth({
+  replayMessage,
+  blockedMessageId,
+  threadId,
+  setMessages,
+  sendMessage,
+}: {
+  replayMessage?: UIMessage;
+  blockedMessageId: string;
+  threadId?: string;
+  setMessages?: UseChatHelpers<UIMessage>["setMessages"];
+  sendMessage?: UseChatHelpers<UIMessage>["sendMessage"];
+}) {
+  if (!replayMessage || !setMessages || !sendMessage) {
+    return;
+  }
+
+  if (threadId) {
+    await deleteMessagesByChatIdAfterTimestampAction(blockedMessageId);
+  }
+
+  setMessages((messages) => {
+    const replayIndex = messages.findIndex((m) => m.id === replayMessage.id);
+
+    if (replayIndex === -1) {
+      return messages;
+    }
+
+    return messages.slice(0, replayIndex);
+  });
+
+  sendMessage(replayMessage);
+}
 
 export const UserMessagePart = memo(
   function UserMessagePart({
@@ -762,7 +797,10 @@ export const ToolMessagePart = memo(
     addToolResult,
     isError,
     messageId,
+    prevMessage,
+    threadId,
     setMessages,
+    sendMessage,
     isManualToolInvocation,
   }: ToolMessagePartProps) => {
     const t = useTranslations("");
@@ -953,12 +991,12 @@ export const ToolMessagePart = memo(
       return extractMCPToolId(toolName);
     }, [toolName]);
 
-    const mcpServer = useMemo(() => {
-      return mcpList?.find((s) => s.name === mcpServerName);
-    }, [mcpList, mcpServerName]);
-
     useEffect(() => {
-      if (mcpServerName && (output as any)?.isError) {
+      if (
+        mcpServerName &&
+        (output as any)?.isError &&
+        !isMcpAuthRequiredToolResult(output)
+      ) {
         mutate("/api/mcp/list");
       }
     }, [mcpServerName, output]);
@@ -975,9 +1013,32 @@ export const ToolMessagePart = memo(
       return !isCompleted && isLast;
     }, [isWorkflowTool, isCompleted, result, isLast]);
 
+    const authRequiredOutput = isMcpAuthRequiredToolResult(output)
+      ? output
+      : null;
+    const showAuthDialog = isLast && !!authRequiredOutput;
+    const authServer = showAuthDialog
+      ? mcpList?.find((s) => s.id === authRequiredOutput._mcpServerId)
+      : undefined;
+
     return (
       <div className="group w-full">
-        <MCPAuthDialog server={mcpServer} serverName={mcpServerName} />
+        {showAuthDialog && (
+          <MCPAuthDialog
+            serverId={authRequiredOutput._mcpServerId}
+            serverName={mcpServerName}
+            isAuthorized={authServer?.isAuthorized}
+            onAuthorized={() =>
+              replayMessageAfterMcpAuth({
+                replayMessage: prevMessage,
+                blockedMessageId: messageId,
+                threadId,
+                setMessages,
+                sendMessage,
+              })
+            }
+          />
+        )}
 
         {CustomToolComponent ? (
           CustomToolComponent
