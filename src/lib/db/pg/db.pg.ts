@@ -16,8 +16,10 @@ const getCloudflareContext: GetCloudflareContext | undefined =
     : undefined;
 
 const createPgDb = (connectionString: string) => {
+  const isCloudflareWorker = process.env.APP_RUNTIME === "cloudflare-workers";
   const pool = new Pool({
     connectionString,
+    max: isCloudflareWorker ? 1 : undefined,
     maxUses: 1,
   });
 
