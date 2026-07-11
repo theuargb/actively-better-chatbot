@@ -442,9 +442,26 @@ export class MCPClient {
         }
         throw err;
       })
-      .ifOk((v) => {
+      .ifOk(async (v) => {
         if (isNull(v)) {
           throw new Error("Tool call failed with null");
+        }
+        // When a per-user-auth tool returns an error, the remote server may have
+        // invalidated our session. Verify auth by reconnecting — if OAuth is
+        // triggered, surface it immediately instead of returning the stale error.
+        if (v?.isError && this.options.perUserAuth) {
+          this.logger.info(
+            "Per-user auth tool returned error, verifying auth is still valid",
+          );
+          await this.disconnect();
+          try {
+            await this.connect();
+          } catch {
+            // Expected if OAuth is required
+          }
+          if (this.status === "authorizing") {
+            return authRequiredResult();
+          }
         }
         return v;
       })
