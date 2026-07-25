@@ -1,6 +1,11 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { getActiveUrlRewrite } from "lib/url-rewrite/server";
-import { COOKIE_KEY_GOTO_INTENT, GOTO_INTENT_MAX_AGE, IS_DEV } from "lib/const";
+import {
+  BASE_URL,
+  COOKIE_KEY_GOTO_INTENT,
+  GOTO_INTENT_MAX_AGE,
+  IS_DEV,
+} from "lib/const";
 import { generateUUID } from "lib/utils";
 import logger from "logger";
 
@@ -17,11 +22,11 @@ import logger from "logger";
  * logged-out visitors reach it at all.
  */
 export async function GET(
-  request: NextRequest,
+  _request: Request,
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
-  const home = new URL("/", request.url);
+  const home = new URL("/", BASE_URL);
 
   const rewrite = await getActiveUrlRewrite(slug).catch((error) => {
     logger.error(`Failed to resolve url rewrite "${slug}"`, error);
