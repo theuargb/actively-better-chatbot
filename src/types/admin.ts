@@ -62,10 +62,64 @@ export interface AdminUpdateUserDetailsData {
   image?: string;
 }
 
+export const ADMIN_USAGE_PERIODS = ["all", "90", "30", "7"] as const;
+export type AdminUsagePeriod = (typeof ADMIN_USAGE_PERIODS)[number];
+
+export interface AdminUsageTotals {
+  threads: number;
+  messages: number;
+  assistantMessages: number;
+  unattributedMessages: number;
+  totalTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  activeUsers: number;
+}
+
+export interface AdminUsageTimePoint {
+  date: string;
+  messages: number;
+  tokens: number;
+}
+
+export interface AdminModelUsageDbRow {
+  provider: string;
+  model: string;
+  threadCount: number;
+  messageCount: number;
+  totalTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  lastUsedAt: Date | null;
+}
+
+export interface AdminUsageDbStats {
+  totals: AdminUsageTotals;
+  timeline: AdminUsageTimePoint[];
+  models: AdminModelUsageDbRow[];
+}
+
+export interface AdminModelUsageRow
+  extends Omit<AdminModelUsageDbRow, "lastUsedAt"> {
+  lastUsedAt: string | null;
+  available: boolean;
+  hasApiKey: boolean;
+}
+
+export interface AdminUsageOverview {
+  period: AdminUsagePeriod;
+  totals: AdminUsageTotals;
+  timeline: AdminUsageTimePoint[];
+  models: AdminModelUsageRow[];
+  availableModelCount: number;
+}
+
 // Admin only repository methods
 export type AdminRepository = {
   // User queries
   getUsers: (query?: AdminUsersQuery) => Promise<AdminUsersPaginated>;
   getUserRoleCounts: () => Promise<AdminUserRoleCounts>;
   getUserAnalytics: (days: number) => Promise<AdminUserAnalytics>;
+  // Usage analytics
+  getUsageStats: (since: Date | null) => Promise<AdminUsageDbStats>;
 };
