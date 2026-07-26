@@ -12,6 +12,8 @@ import {
   buildUserSystemStaticPrompt,
 } from "lib/ai/prompts";
 import { getUserPreferences } from "lib/user/server";
+import { getAiRateLimiter } from "lib/ai/rate-limit";
+import { buildRateLimitMessage } from "lib/ai/rate-limit-message";
 
 import { colorize } from "consola/utils";
 
@@ -26,6 +28,22 @@ export async function POST(request: Request) {
     const session = await getSession();
     if (!session) {
       return new Response("Unauthorized", { status: 401 });
+    }
+
+    const rateLimiter = getAiRateLimiter();
+    if (rateLimiter) {
+      const rateLimitResult = await rateLimiter.check(
+        session.user.id,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (session.user as any).role,
+      );
+      if (!rateLimitResult.ok) {
+        const message = buildRateLimitMessage(rateLimitResult);
+        return new Response(message, {
+          status: 429,
+          headers: { "Retry-After": `${rateLimitResult.retryAfterSeconds}` },
+        });
+      }
     }
 
     const { messages, chatModel, instructions } = json as {
