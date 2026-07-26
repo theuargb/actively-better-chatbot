@@ -735,7 +735,17 @@
       "role": "Rolle",
       "status": "Status",
       "joined": "Ble med",
-      "backToUsers": "Tilbake til brukere"
+      "backToUsers": "Tilbake til brukere",
+      "total": "Totalt",
+      "usersRole": "Brukere",
+      "editorsRole": "Redaktører",
+      "adminsRole": "Administratorer",
+      "analytics": "Statistikk",
+      "userGrowth": "Brukervekst",
+      "activeUsers": "Aktive brukere",
+      "last7Days": "Siste 7 dager",
+      "last30Days": "Siste 30 dager",
+      "last90Days": "Siste 90 dager"
     },
     "UserDelete": {
       "title": "Slett brukerkonto",
