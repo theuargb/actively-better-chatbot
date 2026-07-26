@@ -1,4 +1,4 @@
-**Keinsaas Navigator** - A better open-source AI chatbot for individuals and teams.
+**Actively Better Chatbot** - An actively maintained fork of the original [better-chatbot](https://github.com/cgoinglove/better-chatbot) - better open-source AI chatbot for individuals and teams.
 
 > Originally created by [Choi Sung Keun](https://github.com/cgoinglove).
 
@@ -6,11 +6,25 @@
 
 [![MCP Supported](https://img.shields.io/badge/MCP-Supported-00c853)](https://modelcontextprotocol.io/introduction)
 [![Local First](https://img.shields.io/badge/Local-First-blue)](https://localfirstweb.dev/)
-[![Discord](https://img.shields.io/discord/1374047276074537103?label=Discord&logo=discord&color=5865F2)](https://discord.gg/gCRu69Upnp)
 
-[![Deploy with Vercel](https://vercel.com/button)](<https://vercel.com/new/clone?repository-url=https://github.com/cgoinglove/better-chatbot&env=BETTER_AUTH_SECRET&env=OPENAI_API_KEY&env=GOOGLE_GENERATIVE_AI_API_KEY&env=ANTHROPIC_API_KEY&envDescription=BETTER_AUTH_SECRET+is+required+(enter+any+secret+value).+At+least+one+LLM+provider+API+key+(OpenAI,+Claude,+or+Google)+is+required,+but+you+can+add+all+of+them.+See+the+link+below+for+details.&envLink=https://github.com/cgoinglove/better-chatbot/blob/main/.env.example&demo-title=better-chatbot&demo-description=An+Open-Source+Chatbot+Template+Built+With+Next.js+and+the+AI+SDK+by+Vercel.&products=[{"type":"integration","protocol":"storage","productSlug":"neon","integrationSlug":"neon"},{"type":"integration","protocol":"storage","productSlug":"upstash-kv","integrationSlug":"upstash"},{"type":"blob"}]>)
 
-🚀 **[Live Demo](https://app.keinsaas.com/)** | See the experience in action in the [preview](#preview) below!
+## Stable changes merged to the `trunk`:
+
+(`main` branch is set aside to sync with upstream only)
+
+#### Fixes
+
+- `theuargb:feat-reorganize-prompts-maximize-caching`
+- `hakonharnes:fix/enter-key-newline-insertion`
+- `theuargb:feat-oauth-first-name`
+- `theuargb:fix-await-thread-title-generation`
+
+
+#### Features
+- **Multi-User MCP Auth** `theuargb:feature-multiuser-mcp-auth` (includes `hakonharnes:fix/mcp-oauth-session-recovery`)
+- **Per-domain renderers for HTTP tools** - `theuargb:feature-per-domain-http-invocation-renderers`
+- **Rate Limits (WIP)** - `theuargb:feature-basic-rate-limits`
+- **Users Analytics** - `theuargb:feat-richer-user-stats`
 
 #### Demo Chats
 
@@ -27,7 +41,7 @@ You only need **one AI Provider API Key** (OpenAI, Claude, Gemini, etc.). Everyt
 
 ---
 
-**Keinsaas Navigator** - A better open-source AI chatbot for individuals and teams, inspired by ChatGPT, Claude, Grok, and Gemini.
+**Better Chatbot** - A better open-source AI chatbot for individuals and teams, inspired by ChatGPT, Claude, Grok, and Gemini.
 
 • **Multi-AI Support** - Integrates all major LLMs: OpenAI, Anthropic, Google, xAI, Ollama, and more  
 • **Powerful Tools** - MCP protocol, web search, JS/Python code execution, data visualization  
