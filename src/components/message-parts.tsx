@@ -772,6 +772,17 @@ const ImageGeneratorToolInvocation = dynamic(
   },
 );
 
+const HttpRequestToolInvocation = dynamic(
+  () =>
+    import("./tool-invocation/http-request").then(
+      (mod) => mod.HttpRequestToolInvocation,
+    ),
+  {
+    ssr: false,
+    loading,
+  },
+);
+
 // Local shortcuts for tool invocation approval/rejection
 const approveToolInvocationShortcut: Shortcut = {
   description: "approveToolInvocation",
@@ -924,6 +935,10 @@ export const ToolMessagePart = memo(
         toolName === DefaultToolName.WebContent
       ) {
         return <WebSearchToolInvocation part={part} />;
+      }
+
+      if (toolName === DefaultToolName.Http) {
+        return <HttpRequestToolInvocation part={part} />;
       }
 
       if (toolName === ImageToolName) {
