@@ -1,19 +1,22 @@
 import {
-  AdminRepository,
-  AdminUsersQuery,
-  AdminUsersPaginated,
-  AdminUserRoleCounts,
-  AdminUserAnalytics,
   AdminAnalyticsPoint,
+  AdminRepository,
+  AdminUsageDbStats,
+  AdminUsageTimePoint,
+  AdminUserAnalytics,
+  AdminUserRoleCounts,
+  AdminUsersPaginated,
+  AdminUsersQuery,
 } from "app-types/admin";
 import { USER_ROLES } from "app-types/roles";
-import { pgDb as db } from "../db.pg";
 import {
-  UserTable,
-  SessionTable,
-  ChatMessageTable,
-  ChatThreadTable,
-} from "../schema.pg";
+  eachDayOfInterval,
+  eachWeekOfInterval,
+  format,
+  parseISO,
+  startOfDay,
+  subDays,
+} from "date-fns";
 import {
   and,
   asc,
@@ -27,8 +30,14 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import { eachDayOfInterval, format, startOfDay, subDays } from "date-fns";
 import { buildActiveUserAnalytics } from "lib/admin/user-analytics";
+import { pgDb as db } from "../db.pg";
+import {
+  ChatMessageTable,
+  ChatThreadTable,
+  SessionTable,
+  UserTable,
+} from "../schema.pg";
 
 // Only these windows are supported for the analytics charts
 const VALID_ANALYTICS_WINDOWS = [7, 30, 90] as const;
@@ -256,7 +265,134 @@ const pgAdminRepository: AdminRepository = {
 
     return { growth, ...activeAnalytics };
   },
+
+  getUsageStats: async (since: Date | null): Promise<AdminUsageDbStats> => {
+    const sinceCondition = since
+      ? gte(ChatMessageTable.createdAt, since)
+      : undefined;
+    const bucketUnit: "day" | "week" = since === null ? "week" : "day";
+    const truncExpr = sql`date_trunc(${sql.raw(`'${bucketUnit}'`)}, ${ChatMessageTable.createdAt})`;
+
+    const totalsBase = db
+      .select({
+        threads: sql<number>`COUNT(DISTINCT ${ChatThreadTable.id})`,
+        messages: sql<number>`COUNT(${ChatMessageTable.id})`,
+        assistantMessages: sql<number>`COUNT(*) FILTER (WHERE ${ChatMessageTable.role} = 'assistant')`,
+        unattributedMessages: sql<number>`COUNT(*) FILTER (WHERE ${ChatMessageTable.role} = 'assistant' AND ${ChatMessageTable.metadata}->'chatModel'->>'model' IS NULL)`,
+        totalTokens: sql<number>`COALESCE(SUM((${ChatMessageTable.metadata}->'usage'->>'totalTokens')::numeric), 0)`,
+        inputTokens: sql<number>`COALESCE(SUM((${ChatMessageTable.metadata}->'usage'->>'inputTokens')::numeric), 0)`,
+        outputTokens: sql<number>`COALESCE(SUM((${ChatMessageTable.metadata}->'usage'->>'outputTokens')::numeric), 0)`,
+        activeUsers: sql<number>`COUNT(DISTINCT ${ChatThreadTable.userId})`,
+      })
+      .from(ChatMessageTable)
+      .innerJoin(
+        ChatThreadTable,
+        eq(ChatThreadTable.id, ChatMessageTable.threadId),
+      );
+    const [totalsRow] = sinceCondition
+      ? await totalsBase.where(sinceCondition)
+      : await totalsBase;
+
+    const timelineBase = db
+      .select({
+        bucket: sql<string>`to_char(${truncExpr}, 'YYYY-MM-DD')`.as("bucket"),
+        messages: sql<number>`COUNT(*)`,
+        tokens: sql<number>`COALESCE(SUM((${ChatMessageTable.metadata}->'usage'->>'totalTokens')::numeric), 0)`,
+      })
+      .from(ChatMessageTable)
+      .groupBy(sql`1`)
+      .orderBy(sql`1`);
+    const timelineRows = sinceCondition
+      ? await timelineBase.where(sinceCondition)
+      : await timelineBase;
+
+    const modelNotNullCondition = sql`${ChatMessageTable.metadata}->'chatModel'->>'model' IS NOT NULL`;
+    const modelsBase = db
+      .select({
+        provider:
+          sql<string>`COALESCE(${ChatMessageTable.metadata}->'chatModel'->>'provider', 'unknown')`.as(
+            "provider",
+          ),
+        model:
+          sql<string>`${ChatMessageTable.metadata}->'chatModel'->>'model'`.as(
+            "model",
+          ),
+        threadCount: sql<number>`COUNT(DISTINCT ${ChatMessageTable.threadId})`,
+        messageCount: sql<number>`COUNT(*)`,
+        totalTokens: sql<number>`COALESCE(SUM((${ChatMessageTable.metadata}->'usage'->>'totalTokens')::numeric), 0)`,
+        inputTokens: sql<number>`COALESCE(SUM((${ChatMessageTable.metadata}->'usage'->>'inputTokens')::numeric), 0)`,
+        outputTokens: sql<number>`COALESCE(SUM((${ChatMessageTable.metadata}->'usage'->>'outputTokens')::numeric), 0)`,
+        lastUsedAt: sql<Date | null>`MAX(${ChatMessageTable.createdAt})`,
+      })
+      .from(ChatMessageTable)
+      .groupBy(sql`1`, sql`2`);
+    const modelsWhere = sinceCondition
+      ? and(modelNotNullCondition, sinceCondition)
+      : modelNotNullCondition;
+    const modelRows = await modelsBase.where(modelsWhere);
+
+    const timeline = fillTimelineGaps(
+      timelineRows.map((row) => ({
+        date: row.bucket,
+        messages: Number(row.messages),
+        tokens: Number(row.tokens),
+      })),
+      since,
+      bucketUnit,
+    );
+
+    return {
+      totals: {
+        threads: Number(totalsRow?.threads || 0),
+        messages: Number(totalsRow?.messages || 0),
+        assistantMessages: Number(totalsRow?.assistantMessages || 0),
+        unattributedMessages: Number(totalsRow?.unattributedMessages || 0),
+        totalTokens: Number(totalsRow?.totalTokens || 0),
+        inputTokens: Number(totalsRow?.inputTokens || 0),
+        outputTokens: Number(totalsRow?.outputTokens || 0),
+        activeUsers: Number(totalsRow?.activeUsers || 0),
+      },
+      timeline,
+      models: modelRows.map((row) => ({
+        provider: row.provider,
+        model: row.model,
+        threadCount: Number(row.threadCount),
+        messageCount: Number(row.messageCount),
+        totalTokens: Number(row.totalTokens),
+        inputTokens: Number(row.inputTokens),
+        outputTokens: Number(row.outputTokens),
+        lastUsedAt: row.lastUsedAt ? new Date(row.lastUsedAt) : null,
+      })),
+    };
+  },
 };
+
+// Fill missing day/week buckets in a usage timeline with zeroed points so
+// charts render a continuous axis instead of gaps.
+function fillTimelineGaps(
+  points: AdminUsageTimePoint[],
+  since: Date | null,
+  bucketUnit: "day" | "week",
+): AdminUsageTimePoint[] {
+  const byDate = new Map(points.map((p) => [p.date, p]));
+  const now = new Date();
+  const start = since ?? (points.length > 0 ? parseISO(points[0].date) : now);
+
+  const bucketStarts =
+    bucketUnit === "week"
+      ? eachWeekOfInterval({ start, end: now }, { weekStartsOn: 1 })
+      : eachDayOfInterval({ start: startOfDay(start), end: now });
+
+  return bucketStarts.map((bucketStart) => {
+    const key = format(bucketStart, "yyyy-MM-dd");
+    const existing = byDate.get(key);
+    return {
+      date: key,
+      messages: existing?.messages ?? 0,
+      tokens: existing?.tokens ?? 0,
+    };
+  });
+}
 
 // Helper function to build filter conditions
 function buildFilterCondition(

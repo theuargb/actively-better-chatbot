@@ -1,7 +1,15 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { getUserAnalyticsAction } from "@/app/api/admin/analytics-actions";
+import {
+  AdminAnalyticsChartCard,
+  AdminAnalyticsChartViewport,
+  AdminAnalyticsCharts,
+} from "@/components/admin/admin-analytics-charts";
+import { AdminUserAnalytics } from "app-types/admin";
 import { format, parseISO } from "date-fns";
+import { useTranslations } from "next-intl";
+import { useMemo, useState, useTransition } from "react";
 import {
   Area,
   AreaChart,
@@ -9,32 +17,16 @@ import {
   CartesianGrid,
   ComposedChart,
   Line,
-  ResponsiveContainer,
   XAxis,
   YAxis,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "ui/select";
 import {
   ChartConfig,
-  ChartContainer,
   ChartLegend,
   ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
 } from "ui/chart";
-import { useTranslations } from "next-intl";
-import { AdminUserAnalytics } from "app-types/admin";
-import { getUserAnalyticsAction } from "@/app/api/admin/analytics-actions";
-import { cn } from "lib/utils";
-
-const PERIODS = [7, 30, 90] as const;
 
 interface UserAnalyticsChartsProps {
   initialDays: number;
@@ -50,11 +42,11 @@ export function UserAnalyticsCharts({
   const [data, setData] = useState(initialData);
   const [isPending, startTransition] = useTransition();
 
-  const periodLabels: Record<(typeof PERIODS)[number], string> = {
-    7: t("last7Days"),
-    30: t("last30Days"),
-    90: t("last90Days"),
-  };
+  const periods = [
+    { value: "7", label: t("last7Days") },
+    { value: "30", label: t("last30Days") },
+    { value: "90", label: t("last90Days") },
+  ];
 
   const growthChartConfig: ChartConfig = useMemo(
     () => ({
@@ -122,122 +114,81 @@ export function UserAnalyticsCharts({
   };
 
   return (
-    <div className="space-y-3" data-testid="user-analytics-charts">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-muted-foreground">
-          {t("analytics")}
-        </h3>
-        <Select value={String(days)} onValueChange={handlePeriodChange}>
-          <SelectTrigger
-            size="sm"
-            className="w-[160px]"
-            data-testid="analytics-period-select"
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PERIODS.map((period) => (
-              <SelectItem key={period} value={String(period)}>
-                {periodLabels[period]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+    <AdminAnalyticsCharts
+      title={t("analytics")}
+      period={String(days)}
+      periods={periods}
+      onPeriodChange={handlePeriodChange}
+      isPending={isPending}
+      periodSelectTestId="analytics-period-select"
+      testId="user-analytics-charts"
+    >
+      <AdminAnalyticsChartCard title={t("userGrowth")}>
+        <AdminAnalyticsChartViewport config={growthChartConfig}>
+          <AreaChart data={growthData}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis
+              dataKey="label"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              minTickGap={24}
+            />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              width={32}
+            />
+            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+            <Area
+              type="monotone"
+              dataKey="count"
+              stroke="var(--color-count)"
+              fill="var(--color-count)"
+              fillOpacity={0.2}
+              strokeWidth={2}
+            />
+          </AreaChart>
+        </AdminAnalyticsChartViewport>
+      </AdminAnalyticsChartCard>
 
-      <div
-        className={cn(
-          "grid gap-4 lg:grid-cols-2 transition-opacity",
-          isPending && "opacity-50 pointer-events-none",
-        )}
-      >
-        <Card className="bg-card">
-          <CardHeader>
-            <CardTitle className="text-base">{t("userGrowth")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={growthChartConfig}>
-              <ResponsiveContainer width="100%" height={240}>
-                <AreaChart data={growthData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis
-                    dataKey="label"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    minTickGap={24}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    width={32}
-                  />
-                  <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent />}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="count"
-                    stroke="var(--color-count)"
-                    fill="var(--color-count)"
-                    fillOpacity={0.2}
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card">
-          <CardHeader>
-            <CardTitle className="text-base">{t("activeUsers")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={activeChartConfig}>
-              <ResponsiveContainer width="100%" height={240}>
-                <ComposedChart data={activeData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis
-                    dataKey="label"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    minTickGap={24}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    width={32}
-                    allowDecimals={false}
-                  />
-                  <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent />}
-                  />
-                  <ChartLegend content={<ChartLegendContent />} />
-                  <Bar dataKey="count" fill="var(--color-count)" radius={4} />
-                  <Line
-                    type="monotone"
-                    dataKey="twoDayStreak"
-                    stroke="var(--color-twoDayStreak)"
-                    strokeWidth={2}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="threeDayStreak"
-                    stroke="var(--color-threeDayStreak)"
-                    strokeWidth={2}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+      <AdminAnalyticsChartCard title={t("activeUsers")}>
+        <AdminAnalyticsChartViewport config={activeChartConfig}>
+          <ComposedChart data={activeData}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+            <XAxis
+              dataKey="label"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              minTickGap={24}
+            />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              width={32}
+              allowDecimals={false}
+            />
+            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+            <ChartLegend content={<ChartLegendContent />} />
+            <Bar dataKey="count" fill="var(--color-count)" radius={4} />
+            <Line
+              type="monotone"
+              dataKey="twoDayStreak"
+              stroke="var(--color-twoDayStreak)"
+              strokeWidth={2}
+            />
+            <Line
+              type="monotone"
+              dataKey="threeDayStreak"
+              stroke="var(--color-threeDayStreak)"
+              strokeWidth={2}
+            />
+          </ComposedChart>
+        </AdminAnalyticsChartViewport>
+      </AdminAnalyticsChartCard>
+    </AdminAnalyticsCharts>
   );
 }

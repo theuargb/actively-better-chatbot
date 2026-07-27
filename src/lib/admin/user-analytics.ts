@@ -1,5 +1,5 @@
-import { format, parseISO, subDays } from "date-fns";
 import type { AdminAnalyticsPoint } from "app-types/admin";
+import { format, parseISO, subDays } from "date-fns";
 
 export interface ActiveUserDay {
   date: string;
