@@ -40,6 +40,7 @@ export interface AdminUsersPaginated {
 
 export interface AdminUserRoleCounts {
   total: number;
+  online: number;
   admin: number;
   editor: number;
   user: number;
@@ -53,6 +54,8 @@ export interface AdminAnalyticsPoint {
 export interface AdminUserAnalytics {
   growth: AdminAnalyticsPoint[];
   activeUsers: AdminAnalyticsPoint[];
+  twoDayStreakUsers: AdminAnalyticsPoint[];
+  threeDayStreakUsers: AdminAnalyticsPoint[];
 }
 
 export interface AdminUpdateUserDetailsData {
