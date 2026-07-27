@@ -24,7 +24,7 @@ export const DEFAULT_SORT_DIRECTION = "desc";
 export const DEFAULT_USAGE_PERIOD: AdminUsagePeriod = "7";
 
 const VALID_ANALYTICS_WINDOWS = [7, 30, 90] as const;
-export const DEFAULT_ANALYTICS_WINDOW_DAYS = 30;
+export const DEFAULT_ANALYTICS_WINDOW_DAYS = 7;
 
 /**
  * Require an admin session
