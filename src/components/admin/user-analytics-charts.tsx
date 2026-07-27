@@ -6,8 +6,9 @@ import {
   Area,
   AreaChart,
   Bar,
-  BarChart,
   CartesianGrid,
+  ComposedChart,
+  Line,
   ResponsiveContainer,
   XAxis,
   YAxis,
@@ -23,6 +24,8 @@ import {
 import {
   ChartConfig,
   ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
 } from "ui/chart";
@@ -69,6 +72,14 @@ export function UserAnalyticsCharts({
         label: t("activeUsers"),
         color: "var(--chart-2)",
       },
+      twoDayStreak: {
+        label: t("twoDayStreak"),
+        color: "#f97316",
+      },
+      threeDayStreak: {
+        label: t("threeDayStreak"),
+        color: "#d946ef",
+      },
     }),
     [t],
   );
@@ -89,8 +100,16 @@ export function UserAnalyticsCharts({
         date: point.date,
         label: format(parseISO(point.date), "MMM d"),
         count: point.count,
+        twoDayStreak:
+          data.twoDayStreakUsers.find(
+            (streakPoint) => streakPoint.date === point.date,
+          )?.count ?? 0,
+        threeDayStreak:
+          data.threeDayStreakUsers.find(
+            (streakPoint) => streakPoint.date === point.date,
+          )?.count ?? 0,
       })),
-    [data.activeUsers],
+    [data.activeUsers, data.threeDayStreakUsers, data.twoDayStreakUsers],
   );
 
   const handlePeriodChange = (value: string) => {
@@ -179,7 +198,7 @@ export function UserAnalyticsCharts({
           <CardContent>
             <ChartContainer config={activeChartConfig}>
               <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={activeData}>
+                <ComposedChart data={activeData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis
                     dataKey="label"
@@ -199,8 +218,21 @@ export function UserAnalyticsCharts({
                     cursor={false}
                     content={<ChartTooltipContent />}
                   />
+                  <ChartLegend content={<ChartLegendContent />} />
                   <Bar dataKey="count" fill="var(--color-count)" radius={4} />
-                </BarChart>
+                  <Line
+                    type="monotone"
+                    dataKey="twoDayStreak"
+                    stroke="var(--color-twoDayStreak)"
+                    strokeWidth={2}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="threeDayStreak"
+                    stroke="var(--color-threeDayStreak)"
+                    strokeWidth={2}
+                  />
+                </ComposedChart>
               </ResponsiveContainer>
             </ChartContainer>
           </CardContent>

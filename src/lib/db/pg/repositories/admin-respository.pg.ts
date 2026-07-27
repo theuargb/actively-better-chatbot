@@ -28,6 +28,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { eachDayOfInterval, format, startOfDay, subDays } from "date-fns";
+import { buildActiveUserAnalytics } from "lib/admin/user-analytics";
 
 // Only these windows are supported for the analytics charts
 const VALID_ANALYTICS_WINDOWS = [7, 30, 90] as const;
@@ -127,7 +128,7 @@ const pgAdminRepository: AdminRepository = {
   },
 
   getUserRoleCounts: async (): Promise<AdminUserRoleCounts> => {
-    const [roleRows, [totalResult]] = await Promise.all([
+    const [roleRows, [totalResult], [onlineResult]] = await Promise.all([
       db
         .select({
           // role can be a comma-separated multi-role string (see UserRoleBadges),
@@ -140,10 +141,31 @@ const pgAdminRepository: AdminRepository = {
         .from(UserTable)
         .groupBy(sql`1`),
       db.select({ count: count() }).from(UserTable),
+      db
+        .select({
+          count: sql<number>`count(distinct ${ChatThreadTable.userId})::int`.as(
+            "count",
+          ),
+        })
+        .from(ChatMessageTable)
+        .innerJoin(
+          ChatThreadTable,
+          eq(ChatThreadTable.id, ChatMessageTable.threadId),
+        )
+        .where(
+          and(
+            gte(
+              ChatMessageTable.createdAt,
+              new Date(Date.now() - 5 * 60 * 1000),
+            ),
+            eq(ChatMessageTable.role, "user"),
+          ),
+        ),
     ]);
 
     const counts: AdminUserRoleCounts = {
       total: totalResult?.count || 0,
+      online: Number(onlineResult?.count) || 0,
       admin: 0,
       editor: 0,
       user: 0,
@@ -170,6 +192,7 @@ const pgAdminRepository: AdminRepository = {
       ? days
       : 30;
     const windowStart = startOfDay(subDays(new Date(), validDays - 1));
+    const activityWindowStart = subDays(windowStart, 2);
 
     const [signupRows, [baselineResult], activeRows] = await Promise.all([
       db
@@ -192,9 +215,7 @@ const pgAdminRepository: AdminRepository = {
           day: sql<string>`to_char(date_trunc('day', ${ChatMessageTable.createdAt}), 'YYYY-MM-DD')`.as(
             "day",
           ),
-          count: sql<number>`count(distinct ${ChatThreadTable.userId})::int`.as(
-            "count",
-          ),
+          userId: ChatThreadTable.userId,
         })
         .from(ChatMessageTable)
         .innerJoin(
@@ -203,21 +224,17 @@ const pgAdminRepository: AdminRepository = {
         )
         .where(
           and(
-            gte(ChatMessageTable.createdAt, windowStart),
+            gte(ChatMessageTable.createdAt, activityWindowStart),
             eq(ChatMessageTable.role, "user"),
           ),
         )
-        .groupBy(sql`1`)
-        .orderBy(sql`1`),
+        .groupBy(sql`1`, ChatThreadTable.userId)
+        .orderBy(sql`1`, ChatThreadTable.userId),
     ]);
 
     const signupsByDay = new Map(
       signupRows.map((row) => [row.day, Number(row.count)]),
     );
-    const activeByDay = new Map(
-      activeRows.map((row) => [row.day, Number(row.count)]),
-    );
-
     const allDays = eachDayOfInterval({
       start: windowStart,
       end: new Date(),
@@ -229,12 +246,15 @@ const pgAdminRepository: AdminRepository = {
       return { date, count: running };
     });
 
-    const activeUsers: AdminAnalyticsPoint[] = allDays.map((date) => ({
-      date,
-      count: activeByDay.get(date) ?? 0,
-    }));
+    const activeAnalytics = buildActiveUserAnalytics(
+      allDays,
+      activeRows.map((row) => ({
+        date: row.day,
+        userId: row.userId,
+      })),
+    );
 
-    return { growth, activeUsers };
+    return { growth, ...activeAnalytics };
   },
 };
 

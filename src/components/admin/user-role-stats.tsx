@@ -1,4 +1,4 @@
-import { Users, User, Edit3, ShieldCheck } from "lucide-react";
+import { Radio, User, Edit3, ShieldCheck } from "lucide-react";
 import { AdminUserRoleCounts } from "app-types/admin";
 import { getTranslations } from "next-intl/server";
 
@@ -11,10 +11,10 @@ export async function UserRoleStats({ counts }: UserRoleStatsProps) {
 
   const stats = [
     {
-      key: "total",
-      label: t("total"),
-      value: counts.total,
-      icon: Users,
+      key: "online",
+      label: t("online"),
+      value: counts.online,
+      icon: Radio,
       iconBg: "bg-primary/10",
       iconColor: "text-primary",
     },
