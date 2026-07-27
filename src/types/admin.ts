@@ -62,7 +62,7 @@ export interface AdminUpdateUserDetailsData {
   image?: string;
 }
 
-export const ADMIN_USAGE_PERIODS = ["all", "90", "30", "7"] as const;
+export const ADMIN_USAGE_PERIODS = ["7", "30", "90", "all"] as const;
 export type AdminUsagePeriod = (typeof ADMIN_USAGE_PERIODS)[number];
 
 export interface AdminUsageTotals {

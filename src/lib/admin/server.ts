@@ -1,27 +1,27 @@
 import "server-only";
 
-import { getSession } from "lib/auth/server";
 import {
-  AdminUsersQuery,
-  AdminUsersPaginated,
-  AdminUserRoleCounts,
-  AdminUserAnalytics,
   ADMIN_USAGE_PERIODS,
-  AdminUsagePeriod,
   AdminUsageOverview,
+  AdminUsagePeriod,
+  AdminUserAnalytics,
+  AdminUserRoleCounts,
+  AdminUsersPaginated,
+  AdminUsersQuery,
 } from "app-types/admin";
+import { startOfDay, subDays } from "date-fns";
+import { customModelProvider } from "lib/ai/models";
 import {
   requireAdminPermission,
   requireUserListPermission,
 } from "lib/auth/permissions";
+import { getSession } from "lib/auth/server";
 import pgAdminRepository from "lib/db/pg/repositories/admin-respository.pg";
-import { customModelProvider } from "lib/ai/models";
-import { subDays, startOfDay } from "date-fns";
 
 export const ADMIN_USER_LIST_LIMIT = 10;
 export const DEFAULT_SORT_BY = "createdAt";
 export const DEFAULT_SORT_DIRECTION = "desc";
-export const DEFAULT_USAGE_PERIOD: AdminUsagePeriod = "all";
+export const DEFAULT_USAGE_PERIOD: AdminUsagePeriod = "7";
 
 const VALID_ANALYTICS_WINDOWS = [7, 30, 90] as const;
 export const DEFAULT_ANALYTICS_WINDOW_DAYS = 30;
