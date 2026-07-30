@@ -120,6 +120,13 @@
       "when": 1771768784529,
       "tag": "0016_curved_maggott",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1785004151152,
+      "tag": "0017_bouncy_thunderbolts",
+      "breakpoints": true
     }
   ]
 }
