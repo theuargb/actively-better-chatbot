@@ -194,6 +194,17 @@
   "Chat": {
     "Error": "Chatfeil",
     "thisMessageWasNotSavedPleaseTryTheChatAgain": "Denne meldingen ble ikke lagret. Prøv chatten på nytt.",
+    "rateLimitedTitle": "Du har nådd AI-grensen",
+    "rateLimitedHourly": "Du kan sende opptil {limit} AI-meldinger per time.",
+    "rateLimitedDaily": "Du kan sende opptil {limit} AI-meldinger per dag.",
+    "rateLimitedRetryAfter": "Prøv igjen om {minutes} min",
+    "rateLimitedSupport": "Trenger du mer? Kontakt administratoren din.",
+    "threadLimitReachedTitle": "Denne chatten nådde grensen på {limit} meldinger",
+    "threadLimitReachedDescription": "Start en ny chat for å fortsette. De tidligere meldingene dine blir lagret her.",
+    "threadLimitNewChat": "Opprett ny chat",
+    "threadLimitKeepsContextSharp": "Kortere chatter gir skarpere svar.",
+    "threadLimitWarningTitle": "{remaining, plural, =1 {1 melding igjen} other {# meldinger igjen}} i denne chatten",
+    "threadLimitWarningDescription": "Denne chatten har en grense på {limit} meldinger. Start en ny når du når den.",
     "uploadImage": "Last opp fil",
     "generateImage": "Generer bilde",
     "imageUploadedSuccessfully": "Bilde lastet opp",
@@ -722,6 +733,9 @@
       "toggleSidebar": "Åpne sidefelt",
       "adminPanel": "Adminpanel",
       "backToApp": "Tilbake til appen"
+    },
+    "Plans": {
+      "title": "Abonnementer"
     },
     "Users": {
       "title": "Brukere",

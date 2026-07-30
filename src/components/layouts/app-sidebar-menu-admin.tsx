@@ -9,7 +9,7 @@ import {
 import { Tooltip } from "ui/tooltip";
 import { SidebarMenuItem } from "ui/sidebar";
 import { SidebarMenuButton } from "ui/sidebar";
-import { ChartColumn, Link2, Shield, Users } from "lucide-react";
+import { ChartColumn, CreditCard, Link2, Shield, Users } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
@@ -22,6 +22,13 @@ const AppSidebarAdmin = () => {
   }, [pathname]);
   const adminNavItems = useMemo(
     () => [
+      {
+        id: "plans",
+        title: t("Plans.title"),
+        url: "/admin/plans",
+        icon: CreditCard,
+        isActive: pathname.startsWith("/admin/plans"),
+      },
       {
         id: "users",
         title: t("Users.title"),
@@ -51,7 +58,8 @@ const AppSidebarAdmin = () => {
     <SidebarMenu className="group/admin">
       <Tooltip>
         <SidebarMenuItem>
-          <Link href="/admin" data-testid="admin-sidebar-link">
+          {/* Users stays the admin landing page even though Plans leads the sub-nav. */}
+          <Link href="/admin/users" data-testid="admin-sidebar-link">
             <SidebarMenuButton className="font-semibold">
               <Shield className="size-4 text-foreground" />
               {t("title")}

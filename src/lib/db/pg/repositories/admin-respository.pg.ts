@@ -36,6 +36,7 @@ import {
   ChatMessageTable,
   ChatThreadTable,
   SessionTable,
+  PlanTable,
   UserTable,
 } from "../schema.pg";
 
@@ -65,13 +66,20 @@ const pgAdminRepository: AdminRepository = {
     const baseQuery = db
       .select({
         ...getUserColumnsWithoutPassword(),
+        plan: {
+          id: PlanTable.id,
+          code: PlanTable.code,
+          name: PlanTable.name,
+          active: PlanTable.active,
+        },
         lastLogin: sql<Date | null>`(
           SELECT MAX(${SessionTable.updatedAt}) 
           FROM ${SessionTable} 
           WHERE ${SessionTable.userId} = ${UserTable.id}
         )`.as("lastLogin"),
       })
-      .from(UserTable);
+      .from(UserTable)
+      .leftJoin(PlanTable, eq(UserTable.planId, PlanTable.id));
 
     // Build WHERE conditions
     const whereConditions: any[] = [];

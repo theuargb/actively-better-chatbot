@@ -127,6 +127,13 @@
       "when": 1785004151152,
       "tag": "0017_bouncy_thunderbolts",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1785432692183,
+      "tag": "0018_loving_tinkerer",
+      "breakpoints": true
     }
   ]
 }

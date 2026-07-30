@@ -7,6 +7,7 @@ import { useProfileTranslations } from "@/hooks/use-profile-translations";
 import { useSidebar } from "ui/sidebar";
 import useSWR, { mutate } from "swr";
 import { cn, fetcher } from "lib/utils";
+import { PlanSummary } from "app-types/plan";
 
 interface UserDetailProps {
   user: BasicUserWithLastLogin;
@@ -17,6 +18,7 @@ interface UserDetailProps {
   };
   userStatsSlot?: React.ReactNode;
   view?: "admin" | "user";
+  plans?: PlanSummary[];
 }
 
 export function UserDetail({
@@ -25,6 +27,7 @@ export function UserDetail({
   currentUserId,
   userAccountInfo,
   userStatsSlot,
+  plans,
 }: UserDetailProps) {
   const { open: sidebarOpen } = useSidebar();
   const userDetailRoute =
@@ -83,6 +86,7 @@ export function UserDetail({
           userAccountInfo={userAccountInfo}
           view={view}
           onUserDetailsUpdate={handleUserUpdate}
+          plans={plans}
         />
 
         <div

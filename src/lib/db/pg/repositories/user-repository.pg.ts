@@ -10,6 +10,7 @@ import {
   ChatMessageTable,
   ChatThreadTable,
   SessionTable,
+  PlanTable,
   UserTable,
 } from "../schema.pg";
 import { count, eq, getTableColumns, sql } from "drizzle-orm";
@@ -85,6 +86,12 @@ export const pgUserRepository: UserRepository = {
     const [result] = await pgDb
       .select({
         ...getUserColumnsWithoutPassword(),
+        plan: {
+          id: PlanTable.id,
+          code: PlanTable.code,
+          name: PlanTable.name,
+          active: PlanTable.active,
+        },
         lastLogin: sql<Date | null>`(
           SELECT MAX(${SessionTable.updatedAt}) 
           FROM ${SessionTable} 
@@ -92,6 +99,7 @@ export const pgUserRepository: UserRepository = {
         )`.as("lastLogin"),
       })
       .from(UserTable)
+      .leftJoin(PlanTable, eq(UserTable.planId, PlanTable.id))
       .where(eq(UserTable.id, userId));
 
     return result || null;

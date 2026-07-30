@@ -179,7 +179,13 @@ export const getFilePartSupportedMimeTypes = (model: LanguageModel) => {
   return staticFilePartSupportByModel.get(model) ?? [];
 };
 
-const fallbackModel = staticModels.openai["gpt-4.1"];
+export const FALLBACK_MODEL_IDENTITY: ChatModel = {
+  provider: "openai",
+  model: "gpt-4.1",
+};
+
+const fallbackModel =
+  staticModels[FALLBACK_MODEL_IDENTITY.provider][FALLBACK_MODEL_IDENTITY.model];
 
 export const customModelProvider = {
   modelsInfo: Object.entries(allModels).map(([provider, models]) => ({
@@ -193,8 +199,21 @@ export const customModelProvider = {
     hasAPIKey: checkProviderAPIKey(provider as keyof typeof staticModels),
   })),
   getModel: (model?: ChatModel): LanguageModel => {
-    if (!model) return fallbackModel;
-    return allModels[model.provider]?.[model.model] || fallbackModel;
+    return customModelProvider.resolveModel(model).model;
+  },
+  /**
+   * Resolves the model that will actually serve the request, along with the
+   * identity it should be billed against. An unknown client selection falls back
+   * rather than erroring, so limits must be charged to the fallback identity —
+   * otherwise a bogus model name would sidestep per-model limits entirely.
+   */
+  resolveModel: (
+    model?: ChatModel,
+  ): { model: LanguageModel; identity: ChatModel } => {
+    if (model && allModels[model.provider]?.[model.model]) {
+      return { model: allModels[model.provider][model.model], identity: model };
+    }
+    return { model: fallbackModel, identity: FALLBACK_MODEL_IDENTITY };
   },
 };
 

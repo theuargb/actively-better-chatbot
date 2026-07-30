@@ -1,4 +1,5 @@
 export const RATE_LIMIT_ERROR_PREFIX = "AI_RATE_LIMIT";
+export const THREAD_LIMIT_ERROR_PREFIX = "AI_THREAD_LIMIT";
 
 export type RateLimitWindow = "hour" | "day";
 
@@ -17,6 +18,16 @@ export const buildRateLimitMessage = (
     Math.max(0, Math.ceil(payload.retryAfterSeconds)),
     payload.limit,
   ].join("|");
+};
+
+export const parseThreadLimitMessage = (message?: string): number | null => {
+  const [prefix, rawLimit] = message?.split("|") ?? [];
+  const limit = Number(rawLimit);
+  return prefix === THREAD_LIMIT_ERROR_PREFIX &&
+    Number.isFinite(limit) &&
+    limit > 0
+    ? limit
+    : null;
 };
 
 export const parseRateLimitMessage = (

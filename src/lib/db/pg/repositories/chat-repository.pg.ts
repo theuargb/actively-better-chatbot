@@ -8,7 +8,7 @@ import {
   ArchiveItemTable,
 } from "../schema.pg";
 
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 
 export const pgChatRepository: ChatRepository = {
   insertThread: async (
@@ -71,6 +71,19 @@ export const pgChatRepository: ChatRepository = {
       .where(eq(ChatMessageTable.threadId, threadId))
       .orderBy(ChatMessageTable.createdAt);
     return result as ChatMessage[];
+  },
+
+  countUserMessagesByThreadId: async (threadId: string): Promise<number> => {
+    const [result] = await db
+      .select({ count: count() })
+      .from(ChatMessageTable)
+      .where(
+        and(
+          eq(ChatMessageTable.threadId, threadId),
+          eq(ChatMessageTable.role, "user"),
+        ),
+      );
+    return Number(result?.count ?? 0);
   },
 
   selectThreadsByUserId: async (

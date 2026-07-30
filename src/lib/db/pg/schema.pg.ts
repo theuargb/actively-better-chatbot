@@ -13,6 +13,7 @@ import {
   varchar,
   index,
   integer,
+  numeric,
 } from "drizzle-orm/pg-core";
 import { isNotNull } from "drizzle-orm";
 import { DBWorkflow, DBEdge, DBNode } from "app-types/workflow";
@@ -107,6 +108,19 @@ export const McpServerTable = pgTable("mcp_server", {
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const PlanTable = pgTable("plan", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  code: varchar("code", { length: 64 }).notNull().unique(),
+  name: text("name").notNull(),
+  shortDescription: text("short_description").notNull().default(""),
+  description: text("description").notNull().default(""),
+  features: json("features").$type<string[]>().notNull().default([]),
+  price: numeric("price", { precision: 12, scale: 2 }).notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const UserTable = pgTable("user", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
   name: text("name").notNull(),
@@ -121,6 +135,9 @@ export const UserTable = pgTable("user", {
   banReason: text("ban_reason"),
   banExpires: timestamp("ban_expires"),
   role: text("role").notNull().default("user"),
+  planId: uuid("plan_id").references(() => PlanTable.id, {
+    onDelete: "set null",
+  }),
 });
 
 // Role tables removed - using Better Auth's built-in role system
@@ -342,6 +359,7 @@ export type ChatMessageEntity = typeof ChatMessageTable.$inferSelect;
 
 export type AgentEntity = typeof AgentTable.$inferSelect;
 export type UserEntity = typeof UserTable.$inferSelect;
+export type PlanEntity = typeof PlanTable.$inferSelect;
 export type SessionEntity = typeof SessionTable.$inferSelect;
 
 export type ToolCustomizationEntity =

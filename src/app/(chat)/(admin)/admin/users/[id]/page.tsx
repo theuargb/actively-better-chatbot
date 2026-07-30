@@ -9,6 +9,7 @@ import {
 import { Suspense } from "react";
 import { getSession } from "auth/server";
 import { requireAdminPermission } from "auth/permissions";
+import { getAdminPlans } from "lib/admin/plan-server";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -25,9 +26,10 @@ export default async function UserDetailPage({ params }: PageProps) {
   if (!session) {
     redirect("/login");
   }
-  const [user, userAccountInfo] = await Promise.all([
+  const [user, userAccountInfo, plans] = await Promise.all([
     getUser(id),
     getUserAccounts(id),
+    getAdminPlans(),
   ]);
 
   if (!user) {
@@ -45,6 +47,7 @@ export default async function UserDetailPage({ params }: PageProps) {
         </Suspense>
       }
       view="admin"
+      plans={plans}
     />
   );
 }

@@ -3,6 +3,7 @@ import { passwordSchema } from "lib/validations/password";
 
 import { UserEntity } from "lib/db/pg/schema.pg";
 import { getSession } from "auth/server";
+import { PlanSummary } from "app-types/plan";
 
 export type UserPreferences = {
   displayName?: string;
@@ -26,16 +27,19 @@ export type BasicUser = Omit<
   | "banned"
   | "banReason"
   | "banExpires"
+  | "planId"
 > & {
   image?: string | null;
   role?: string | null;
   banned?: boolean | null;
   banReason?: string | null;
   banExpires?: Date | null;
+  planId?: string | null;
 };
 
 export interface BasicUserWithLastLogin extends BasicUser {
   lastLogin: Date | null;
+  plan?: PlanSummary | null;
 }
 
 export type UserSession = NonNullable<Awaited<ReturnType<typeof getSession>>>;

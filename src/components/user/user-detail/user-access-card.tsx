@@ -12,6 +12,8 @@ import { UserRoleSelector } from "./user-role-selection-dialog";
 import { UpdateUserPasswordDialog } from "./user-update-password-dialog";
 import { UserDeleteDialog } from "./user-delete-dialog";
 import { useProfileTranslations } from "@/hooks/use-profile-translations";
+import { PlanSummary } from "app-types/plan";
+import { UserPlanSelector } from "./user-plan-selector";
 
 interface UserAccessCardProps {
   user: BasicUserWithLastLogin;
@@ -23,6 +25,7 @@ interface UserAccessCardProps {
   onUserDetailsUpdate: (user: Partial<BasicUserWithLastLogin>) => void;
   view?: "admin" | "user";
   disabled?: boolean;
+  plans?: PlanSummary[];
 }
 
 export function UserAccessCard({
@@ -32,6 +35,7 @@ export function UserAccessCard({
   onUserDetailsUpdate,
   view,
   disabled = false,
+  plans = [],
 }: UserAccessCardProps) {
   const { t, tCommon } = useProfileTranslations(view);
   const [showRoleDialog, setShowRoleDialog] = useState(false);
@@ -95,6 +99,18 @@ export function UserAccessCard({
               )}
             </div>
           </div>
+
+          {view === "admin" && (
+            <div className="space-y-3">
+              <UserPlanSelector
+                user={user}
+                plans={plans}
+                onChange={(plan) =>
+                  handleUserUpdate({ plan, planId: plan?.id ?? null })
+                }
+              />
+            </div>
+          )}
 
           {/* Account Status Section */}
           <div className="space-y-3">

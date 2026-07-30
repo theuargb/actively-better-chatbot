@@ -14,6 +14,7 @@ import {
 import { getUserPreferences } from "lib/user/server";
 import { getAiRateLimiter } from "lib/ai/rate-limit";
 import { buildRateLimitMessage } from "lib/ai/rate-limit-message";
+import { getUserPlanCode, parseRoles } from "lib/ai/rate-limit-context";
 
 import { colorize } from "consola/utils";
 
@@ -30,13 +31,21 @@ export async function POST(request: Request) {
       return new Response("Unauthorized", { status: 401 });
     }
 
+    const { messages, chatModel, instructions } = json as {
+      messages: UIMessage[];
+      chatModel?: { provider: string; model: string };
+      instructions?: string;
+    };
+    const resolvedModel = customModelProvider.resolveModel(chatModel);
+    const isUserMessage = messages.at(-1)?.role === "user";
     const rateLimiter = getAiRateLimiter();
-    if (rateLimiter) {
-      const rateLimitResult = await rateLimiter.check(
-        session.user.id,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (session.user as any).role,
-      );
+    if (isUserMessage && rateLimiter) {
+      const rateLimitResult = await rateLimiter.check({
+        userId: session.user.id,
+        roles: parseRoles((session.user as { role?: string }).role),
+        planCode: await getUserPlanCode(session.user.id),
+        model: resolvedModel.identity,
+      });
       if (!rateLimitResult.ok) {
         const message = buildRateLimitMessage(rateLimitResult);
         return new Response(message, {
@@ -46,16 +55,8 @@ export async function POST(request: Request) {
       }
     }
 
-    const { messages, chatModel, instructions } = json as {
-      messages: UIMessage[];
-      chatModel?: {
-        provider: string;
-        model: string;
-      };
-      instructions?: string;
-    };
     logger.info(`model: ${chatModel?.provider}/${chatModel?.model}`);
-    const model = customModelProvider.getModel(chatModel);
+    const model = resolvedModel.model;
     const userPreferences =
       (await getUserPreferences(session.user.id)) || undefined;
 

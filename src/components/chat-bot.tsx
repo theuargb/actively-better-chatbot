@@ -84,6 +84,7 @@ export default function ChatBot({
   urlRewriteIntent,
 }: Props) {
   useMcpList();
+  const chatT = useTranslations("Chat");
   const containerRef = useRef<HTMLDivElement>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const { uploadFiles } = useThreadFileUploader(threadId);
@@ -242,6 +243,17 @@ export default function ChatBot({
     messages: initialMessages,
     generateId: generateUUID,
     experimental_throttle: 100,
+    onData: (dataPart: any) => {
+      if (dataPart.type === "data-thread-limit-warning") {
+        const { remaining, limit } = dataPart.data as {
+          remaining: number;
+          limit: number;
+        };
+        toast.warning(chatT("threadLimitWarningTitle", { remaining }), {
+          description: chatT("threadLimitWarningDescription", { limit }),
+        });
+      }
+    },
     onFinish,
   });
   const [isDeleteThreadPopupOpen, setIsDeleteThreadPopupOpen] = useState(false);

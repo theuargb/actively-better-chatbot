@@ -199,6 +199,12 @@
     "rateLimitedDaily": "You can send up to {limit} AI messages per day.",
     "rateLimitedRetryAfter": "Try again in {minutes} min",
     "rateLimitedSupport": "Need more? Ask your admin.",
+    "threadLimitReachedTitle": "This chat reached its {limit}-message limit",
+    "threadLimitReachedDescription": "Start a new chat to keep going. Your earlier messages stay saved here.",
+    "threadLimitNewChat": "Create new chat",
+    "threadLimitKeepsContextSharp": "Shorter chats keep responses sharper.",
+    "threadLimitWarningTitle": "{remaining, plural, =1 {1 message left} other {# messages left}} in this chat",
+    "threadLimitWarningDescription": "This chat is capped at {limit} messages. Start a new one when you hit it.",
     "uploadImage": "Upload File",
     "generateImage": "Generate Image",
     "imageUploadedSuccessfully": "Image uploaded successfully",
@@ -727,6 +733,9 @@
       "toggleSidebar": "Toggle Sidebar",
       "adminPanel": "Admin Panel",
       "backToApp": "Back to App"
+    },
+    "Plans": {
+      "title": "Plans"
     },
     "Users": {
       "title": "Users",

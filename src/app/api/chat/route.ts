@@ -55,8 +55,9 @@ import { nanoBananaTool, openaiImageTool } from "lib/ai/tools/image";
 import { ImageToolName } from "lib/ai/tools";
 import { buildCsvIngestionPreviewParts } from "@/lib/ai/ingest/csv-ingest";
 import { serverFileStorage } from "lib/file-storage";
-import { getAiRateLimiter } from "lib/ai/rate-limit";
+import { getAiRateLimiter, getMaxChatLength } from "lib/ai/rate-limit";
 import { buildRateLimitMessage } from "lib/ai/rate-limit-message";
+import { getUserPlanCode, parseRoles } from "lib/ai/rate-limit-context";
 
 const logger = globalLogger.withDefaults({
   message: colorize("blackBright", `Chat API: `),
@@ -113,21 +114,6 @@ export async function POST(request: Request) {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    const rateLimiter = getAiRateLimiter();
-    if (rateLimiter) {
-      const rateLimitResult = await rateLimiter.check(
-        session.user.id,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (session.user as any).role,
-      );
-      if (!rateLimitResult.ok) {
-        const message = buildRateLimitMessage(rateLimitResult);
-        return new Response(message, {
-          status: 429,
-          headers: { "Retry-After": `${rateLimitResult.retryAfterSeconds}` },
-        });
-      }
-    }
     const {
       id,
       message,
@@ -139,9 +125,29 @@ export async function POST(request: Request) {
       mentions = [],
       attachments = [],
     } = chatApiSchemaRequestBodySchema.parse(json);
-
-    const model = customModelProvider.getModel(chatModel);
-
+    const resolvedModel = customModelProvider.resolveModel(chatModel);
+    const model = resolvedModel.model;
+    const isUserMessage = message.role === "user";
+    const planCode = isUserMessage
+      ? await getUserPlanCode(session.user.id)
+      : null;
+    const roles = parseRoles((session.user as { role?: string }).role);
+    const rateLimiter = getAiRateLimiter();
+    if (isUserMessage && rateLimiter) {
+      const rateLimitResult = await rateLimiter.check({
+        userId: session.user.id,
+        roles,
+        planCode,
+        model: resolvedModel.identity,
+      });
+      if (!rateLimitResult.ok) {
+        const message = buildRateLimitMessage(rateLimitResult);
+        return new Response(message, {
+          status: 429,
+          headers: { "Retry-After": `${rateLimitResult.retryAfterSeconds}` },
+        });
+      }
+    }
     let thread = await chatRepository.selectThreadDetails(id);
 
     if (!thread) {
@@ -156,6 +162,28 @@ export async function POST(request: Request) {
 
     if (thread!.userId !== session.user.id) {
       return new Response("Forbidden", { status: 403 });
+    }
+
+    let threadLimitWarning: { limit: number; remaining: number } | undefined;
+    if (isUserMessage) {
+      const maxChatLength = getMaxChatLength({
+        roles,
+        planCode,
+        model: resolvedModel.identity,
+      });
+      if (maxChatLength) {
+        const userMessageCount =
+          await chatRepository.countUserMessagesByThreadId(thread!.id);
+        if (userMessageCount >= maxChatLength) {
+          return new Response(`AI_THREAD_LIMIT|${maxChatLength}`, {
+            status: 429,
+          });
+        }
+        const remaining = maxChatLength - userMessageCount - 1;
+        if (remaining <= Math.ceil(maxChatLength * 0.1)) {
+          threadLimitWarning = { limit: maxChatLength, remaining };
+        }
+      }
     }
 
     const messages: UIMessage[] = (thread?.messages ?? []).map((m) => {
@@ -273,6 +301,13 @@ export async function POST(request: Request) {
 
     const stream = createUIMessageStream({
       execute: async ({ writer: dataStream }) => {
+        if (threadLimitWarning) {
+          dataStream.write({
+            type: "data-thread-limit-warning",
+            data: threadLimitWarning,
+            transient: true,
+          } as any);
+        }
         const mcpContext = {
           userId: session.user.id,
           servers: await mcpRepository.selectAllForUser(session.user.id),

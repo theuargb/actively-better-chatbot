@@ -130,6 +130,7 @@ export type ChatRepository = {
   >;
 
   selectMessagesByThreadId(threadId: string): Promise<ChatMessage[]>;
+  countUserMessagesByThreadId(threadId: string): Promise<number>;
 
   selectThreadsByUserId(userId: string): Promise<
     (ChatThread & {
