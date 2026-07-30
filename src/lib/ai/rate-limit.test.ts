@@ -6,11 +6,7 @@ import {
   normalizeRateLimitKeyPart,
 } from "./rate-limit";
 
-const createLimiter = () =>
-  new AiRateLimiter({
-    redisUrl: "redis://example.com",
-    store: new MemoryRateLimitStore(),
-  });
+const createLimiter = () => new AiRateLimiter(new MemoryRateLimitStore());
 
 const setEnv = (values: Record<string, string>) => {
   for (const [key, value] of Object.entries(values)) {

@@ -1,5 +1,5 @@
-import Redis from "ioredis";
 import logger from "logger";
+import { getRedisClient } from "lib/redis";
 import { RateLimitMessagePayload } from "./rate-limit-message";
 
 export type RateLimitCheckResult =
@@ -106,8 +106,22 @@ export const getMaxChatLength = (
   return caps.length ? Math.min(...caps) : undefined;
 };
 
-interface RateLimitStore {
+export interface RateLimitStore {
   reserve(rules: Rule[]): Promise<ReserveResult>;
+}
+
+/**
+ * The slice of ioredis this store needs. Narrowing it keeps the Lua wiring
+ * testable without standing up a real server.
+ */
+export interface RateLimitRedis {
+  defineCommand(
+    name: string,
+    definition: { lua: string; numberOfKeys?: number },
+  ): void;
+  reserveRateLimits?: (
+    ...args: (string | number)[]
+  ) => Promise<[number, number] | null>;
 }
 
 /**
@@ -137,20 +151,13 @@ end
 return { 0, 0 }
 `;
 
-class RedisRateLimitStore implements RateLimitStore {
-  private redis: Redis;
-
-  constructor(redisUrl: string) {
-    this.redis = new Redis(redisUrl, {
-      enableOfflineQueue: true,
-      maxRetriesPerRequest: 2,
-      connectTimeout: 5000,
-      commandTimeout: 5000,
-    });
-    this.redis.defineCommand("reserveRateLimits", {
-      numberOfKeys: 0,
-      lua: RESERVE_SCRIPT,
-    });
+export class RedisRateLimitStore implements RateLimitStore {
+  constructor(private redis: RateLimitRedis) {
+    // numberOfKeys is deliberately omitted: ioredis only unshifts a fixed count
+    // when it is a number, so leaving it out lets us pass the key count as the
+    // first argument per call. Setting it here would make every key land in
+    // ARGV instead of KEYS, and the script would silently allow everything.
+    this.redis.defineCommand("reserveRateLimits", { lua: RESERVE_SCRIPT });
   }
 
   async reserve(rules: Rule[]): Promise<ReserveResult> {
@@ -161,14 +168,13 @@ class RedisRateLimitStore implements RateLimitStore {
       String(rule.limit),
       String(WINDOW_MS[rule.window]),
     ]);
-    const [failedIndex, ttlMs] = (await (
-      this.redis as unknown as {
-        reserveRateLimits: (
-          numKeys: number,
-          ...rest: string[]
-        ) => Promise<[number, number]>;
-      }
-    ).reserveRateLimits(keys.length, ...keys, ...args)) ?? [0, 0];
+
+    const reply = await this.redis.reserveRateLimits!(
+      keys.length,
+      ...keys,
+      ...args,
+    );
+    const [failedIndex, ttlMs] = reply ?? [0, 0];
 
     if (!failedIndex) return { ok: true };
     const rule = rules[failedIndex - 1];
@@ -182,11 +188,8 @@ class RedisRateLimitStore implements RateLimitStore {
 export class AiRateLimiter {
   private store: RateLimitStore;
 
-  constructor(options: { redisUrl: string; store?: RateLimitStore }) {
-    if (!options.redisUrl && !options.store) {
-      throw new Error("Redis URL is required for AI rate limiting");
-    }
-    this.store = options.store ?? new RedisRateLimitStore(options.redisUrl);
+  constructor(store: RateLimitStore) {
+    this.store = store;
   }
 
   /** Each scope gets its own counter, so budgets are spent in parallel. */
@@ -225,9 +228,14 @@ export class AiRateLimiter {
 
 let limiter: AiRateLimiter | null = null;
 
+/**
+ * Returns null when Redis is unavailable, which disables request limiting.
+ * Thread-length caps are unaffected: they read env only and need no counters.
+ */
 export const getAiRateLimiter = () => {
-  if (!process.env.REDIS_URL) return null;
-  limiter ??= new AiRateLimiter({ redisUrl: process.env.REDIS_URL });
+  const redis = getRedisClient();
+  if (!redis) return null;
+  limiter ??= new AiRateLimiter(new RedisRateLimitStore(redis));
   return limiter;
 };
 
