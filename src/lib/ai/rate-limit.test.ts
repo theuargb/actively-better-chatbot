@@ -105,16 +105,21 @@ describe("AiRateLimiter role scope", () => {
     }
   });
 
-  it("charges every role a user holds", async () => {
-    setEnv({ AI_RATE_LIMIT_ROLE_ADMIN_PER_DAY: "1" });
+  it("takes the most permissive limit across every role a user holds", async () => {
+    setEnv({
+      AI_RATE_LIMIT_ROLE_USER_PER_DAY: "1",
+      AI_RATE_LIMIT_ROLE_ADMIN_PER_DAY: "3",
+    });
     const limiter = createLimiter();
     const context = { userId: "user-5", roles: ["user", "admin"] };
 
-    expect((await limiter.check(context)).ok).toBe(true);
+    for (let i = 0; i < 3; i++) {
+      expect((await limiter.check(context)).ok).toBe(true);
+    }
     const blocked = await limiter.check(context);
 
     expect(blocked.ok).toBe(false);
-    if (!blocked.ok) expect(blocked.limit).toBe(1);
+    if (!blocked.ok) expect(blocked.limit).toBe(3);
   });
 
   it("allows everything when no scope is configured", async () => {
@@ -139,12 +144,12 @@ describe("AiRateLimiter role scope", () => {
   });
 });
 
-describe("AiRateLimiter cumulative scopes", () => {
-  it("applies role, plan and model limits independently", async () => {
+describe("AiRateLimiter most-permissive scope", () => {
+  it("enforces the biggest configured limit across role, plan and model", async () => {
     setEnv({
-      AI_RATE_LIMIT_ROLE_USER_PER_DAY: "10",
-      AI_RATE_LIMIT_PLAN_PLUS_PER_DAY: "5",
-      "AI_RATE_LIMIT_MODEL_OPENAI_GPT-4_1_PER_DAY": "1",
+      AI_RATE_LIMIT_ROLE_USER_PER_HOUR: "10",
+      AI_RATE_LIMIT_PLAN_PLUS_PER_HOUR: "15",
+      "AI_RATE_LIMIT_MODEL_OPENAI_GPT-4_1_PER_HOUR": "7",
     });
     const limiter = createLimiter();
     const context = {
@@ -154,34 +159,91 @@ describe("AiRateLimiter cumulative scopes", () => {
       model: { provider: "openai", model: "gpt-4.1" },
     };
 
-    expect((await limiter.check(context)).ok).toBe(true);
+    // The plan is the most permissive, so it governs — not the tighter role/model.
+    for (let i = 0; i < 15; i++) {
+      expect((await limiter.check(context)).ok).toBe(true);
+    }
     const blocked = await limiter.check(context);
 
     expect(blocked.ok).toBe(false);
-    // The model scope is the tightest, so it rejects while role/plan still have budget.
-    if (!blocked.ok) expect(blocked.limit).toBe(1);
+    if (!blocked.ok) expect(blocked.limit).toBe(15);
   });
 
-  it("does not consume other scopes when one scope rejects", async () => {
-    setEnv({
-      AI_RATE_LIMIT_PLAN_PLUS_PER_DAY: "5",
-      "AI_RATE_LIMIT_MODEL_OPENAI_GPT-4_1_PER_DAY": "1",
-    });
+  it("ignores scopes with nothing configured instead of treating them as unlimited", async () => {
+    setEnv({ AI_RATE_LIMIT_ROLE_USER_PER_HOUR: "2" });
     const limiter = createLimiter();
-    const base = { userId: "user-9", planCode: "plus" };
-    const expensive = {
-      ...base,
+    const context = {
+      userId: "user-8b",
+      roles: ["user"],
+      planCode: "plus",
       model: { provider: "openai", model: "gpt-4.1" },
     };
 
-    await limiter.check(expensive);
-    expect((await limiter.check(expensive)).ok).toBe(false);
+    expect((await limiter.check(context)).ok).toBe(true);
+    expect((await limiter.check(context)).ok).toBe(true);
 
-    // The plan scope should have been charged exactly once, so four remain.
+    const blocked = await limiter.check(context);
+    expect(blocked.ok).toBe(false);
+    if (!blocked.ok) expect(blocked.limit).toBe(2);
+  });
+
+  it("resolves each window independently", async () => {
+    setEnv({
+      AI_RATE_LIMIT_ROLE_USER_PER_HOUR: "1",
+      AI_RATE_LIMIT_PLAN_PLUS_PER_HOUR: "4",
+      AI_RATE_LIMIT_ROLE_USER_PER_DAY: "6",
+      AI_RATE_LIMIT_PLAN_PLUS_PER_DAY: "2",
+    });
+    const limiter = createLimiter();
+    // Plan wins the hour (4 > 1) while the role wins the day (6 > 2).
+    const context = { userId: "user-8c", roles: ["user"], planCode: "plus" };
+
     for (let i = 0; i < 4; i++) {
-      expect((await limiter.check(base)).ok).toBe(true);
+      expect((await limiter.check(context)).ok).toBe(true);
     }
-    expect((await limiter.check(base)).ok).toBe(false);
+    const blocked = await limiter.check(context);
+
+    expect(blocked.ok).toBe(false);
+    if (!blocked.ok) {
+      expect(blocked.window).toBe("hour");
+      expect(blocked.limit).toBe(4);
+    }
+  });
+
+  it("leaves the hour counter unspent when the day limit rejects", async () => {
+    setEnv({
+      AI_RATE_LIMIT_ROLE_USER_PER_HOUR: "10",
+      AI_RATE_LIMIT_ROLE_USER_PER_DAY: "1",
+    });
+    const limiter = createLimiter();
+    const context = { userId: "user-9", roles: ["user"] };
+
+    expect((await limiter.check(context)).ok).toBe(true);
+    const blocked = await limiter.check(context);
+    expect(blocked.ok).toBe(false);
+    if (!blocked.ok) expect(blocked.window).toBe("day");
+
+    // Lift the day cap: the rejected request must not have consumed the hour
+    // budget, so nine of the ten remain.
+    setEnv({ AI_RATE_LIMIT_ROLE_USER_PER_DAY: "100" });
+    for (let i = 0; i < 9; i++) {
+      expect((await limiter.check(context)).ok).toBe(true);
+    }
+    expect((await limiter.check(context)).ok).toBe(false);
+  });
+
+  it("breaks ties deterministically so spend lands on one counter", async () => {
+    setEnv({
+      AI_RATE_LIMIT_ROLE_USER_PER_DAY: "2",
+      AI_RATE_LIMIT_PLAN_PLUS_PER_DAY: "2",
+    });
+    const limiter = createLimiter();
+    const context = { userId: "user-9b", roles: ["user"], planCode: "plus" };
+
+    // A wobbling winner would alternate buckets and allow four requests.
+    expect((await limiter.check(context)).ok).toBe(true);
+    expect((await limiter.check(context)).ok).toBe(true);
+    expect((await limiter.check(context)).ok).toBe(false);
   });
 
   it("keeps counters separate per user", async () => {
@@ -244,20 +306,39 @@ describe("getMaxChatLength", () => {
     expect(getMaxChatLength({ roles: ["editor"] })).toBe(30);
   });
 
-  it("takes the lowest cap across every role a user holds", () => {
+  it("takes the highest cap across every role a user holds", () => {
     setEnv({
       AI_RATE_LIMIT_ROLE_USER_MAX_CHAT_LEN: "50",
       AI_RATE_LIMIT_ROLE_EDITOR_MAX_CHAT_LEN: "30",
     });
-    expect(getMaxChatLength({ roles: ["user", "editor"] })).toBe(30);
+    expect(getMaxChatLength({ roles: ["user", "editor"] })).toBe(50);
   });
 
-  it("lets a role cap win over plan and model caps when it is lowest", () => {
+  it("lets a role cap win over plan and model caps when it is highest", () => {
     setEnv({
-      AI_RATE_LIMIT_ROLE_USER_MAX_CHAT_LEN: "10",
+      AI_RATE_LIMIT_ROLE_USER_MAX_CHAT_LEN: "60",
       AI_RATE_LIMIT_PLAN_PLUS_MAX_CHAT_LEN: "40",
       "AI_RATE_LIMIT_MODEL_OPENAI_GPT-4_1_MAX_CHAT_LEN": "25",
     });
+    expect(
+      getMaxChatLength({
+        roles: ["user"],
+        planCode: "plus",
+        model: { provider: "openai", model: "gpt-4.1" },
+      }),
+    ).toBe(60);
+  });
+
+  it("uses the biggest cap from the worked example: role 10 beats plan 2", () => {
+    setEnv({
+      AI_RATE_LIMIT_ROLE_USER_MAX_CHAT_LEN: "10",
+      AI_RATE_LIMIT_PLAN_PLUS_MAX_CHAT_LEN: "2",
+    });
+    expect(getMaxChatLength({ roles: ["user"], planCode: "plus" })).toBe(10);
+  });
+
+  it("ignores scopes with no cap configured rather than removing the cap", () => {
+    setEnv({ AI_RATE_LIMIT_ROLE_USER_MAX_CHAT_LEN: "10" });
     expect(
       getMaxChatLength({
         roles: ["user"],
@@ -279,7 +360,7 @@ describe("getMaxChatLength", () => {
     ).toBe(25);
   });
 
-  it("takes the lowest cap when plan and model both apply", () => {
+  it("takes the highest cap when plan and model both apply", () => {
     setEnv({
       AI_RATE_LIMIT_PLAN_PLUS_MAX_CHAT_LEN: "40",
       "AI_RATE_LIMIT_MODEL_OPENAI_GPT-4_1_MAX_CHAT_LEN": "25",
@@ -289,7 +370,7 @@ describe("getMaxChatLength", () => {
         planCode: "plus",
         model: { provider: "openai", model: "gpt-4.1" },
       }),
-    ).toBe(25);
+    ).toBe(40);
   });
 
   it("ignores non-positive and malformed values", () => {
