@@ -23,8 +23,9 @@
 #### Features
 - **Multi-User MCP Auth** `theuargb:feature-multiuser-mcp-auth` (includes `hakonharnes:fix/mcp-oauth-session-recovery`)
 - **Per-domain renderers for HTTP tools** - `theuargb:feature-per-domain-http-invocation-renderers`
-- **Rate Limits (WIP)** - `theuargb:feature-basic-rate-limits`
+- **Rate Limits (basic)** - `theuargb:feature-basic-rate-limits`
 - **Users Analytics** - `theuargb:feat-richer-user-stats`
+- **Plans & Rate Limits (WIP)** - `theuargb:feat-plans`
 
 #### Demo Chats
 
