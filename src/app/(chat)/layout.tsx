@@ -9,6 +9,7 @@ import { AppPopupProvider } from "@/components/layouts/app-popup-provider";
 import { SWRConfigProvider } from "./swr-config";
 import { UserDetailContent } from "@/components/user/user-detail/user-detail-content";
 import { UserDetailContentSkeleton } from "@/components/user/user-detail/user-detail-content-skeleton";
+import { BannerAnnouncementLoader } from "@/components/banner-announcement-loader";
 
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
@@ -31,6 +32,11 @@ export default async function ChatLayout({
           userSettingsComponent={
             <Suspense fallback={<UserDetailContentSkeleton />}>
               <UserDetailContent view="user" />
+            </Suspense>
+          }
+          bannerComponent={
+            <Suspense fallback={null}>
+              <BannerAnnouncementLoader userId={session.user.id} />
             </Suspense>
           }
         />

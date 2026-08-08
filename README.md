@@ -29,6 +29,7 @@
 - **Users Analytics** - `theuargb:feat-richer-user-stats`
 - **Plans & Rate Limits (WIP)** - `theuargb:feat-plans`
 - **Prompt Examples / Ads** - `theuargb:feat-under-prompt-ads`
+- **Banners** - `theuargb:feat-banners`
 
 #### Demo Chats
 

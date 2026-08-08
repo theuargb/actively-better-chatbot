@@ -14,6 +14,7 @@ import {
   CreditCard,
   Link2,
   Megaphone,
+  Newspaper,
   Shield,
   Users,
 } from "lucide-react";
@@ -63,6 +64,13 @@ const AppSidebarAdmin = () => {
         url: "/admin/prompt-ads",
         icon: Megaphone,
         isActive: pathname.startsWith("/admin/prompt-ads"),
+      },
+      {
+        id: "banners",
+        title: t("Banners.title"),
+        url: "/admin/banners",
+        icon: Newspaper,
+        isActive: pathname.startsWith("/admin/banners"),
       },
     ],
     [t, pathname],

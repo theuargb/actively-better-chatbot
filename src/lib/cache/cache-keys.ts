@@ -5,4 +5,5 @@ export const CacheKeys = {
     `mcp-server-customizations-${userId}`,
   agentInstructions: (agent: string) => `agent-instructions-${agent}`,
   promptAds: () => "prompt-ads-enabled",
+  banners: () => "banners-enabled",
 };
