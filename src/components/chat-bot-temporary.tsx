@@ -1,6 +1,6 @@
 "use client";
 import { appStore } from "@/app/store";
-import { useChat, UseChatHelpers } from "@ai-sdk/react";
+import { UseChatHelpers, useChat } from "@ai-sdk/react";
 import { cn } from "lib/utils";
 
 import {
@@ -21,13 +21,11 @@ import {
   DrawerTitle,
 } from "ui/drawer";
 
-import PromptInput from "./prompt-input";
-import { ErrorMessage, PreviewMessage } from "./message";
-import { Settings2, X } from "lucide-react";
-import { Separator } from "ui/separator";
+import { useChatSteering } from "@/hooks/use-chat-steering";
+import { DialogTitle } from "@radix-ui/react-dialog";
 import { DefaultChatTransport, UIMessage } from "ai";
-import { useShallow } from "zustand/shallow";
-import { isShortcutEvent, Shortcuts } from "lib/keyboard-shortcuts";
+import { Shortcuts, isShortcutEvent } from "lib/keyboard-shortcuts";
+import { Settings2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   Dialog,
@@ -37,9 +35,12 @@ import {
   DialogHeader,
   DialogTrigger,
 } from "ui/dialog";
-import { DialogTitle } from "@radix-ui/react-dialog";
+import { Separator } from "ui/separator";
 import { Textarea } from "ui/textarea";
 import { Think } from "ui/think";
+import { useShallow } from "zustand/shallow";
+import { ErrorMessage, PreviewMessage } from "./message";
+import PromptInput from "./prompt-input";
 
 export function ChatBotTemporary() {
   const t = useTranslations("Chat.TemporaryChat");
@@ -87,7 +88,6 @@ export function ChatBotTemporary() {
       setMessages((prev) => prev.slice(0, -1));
     },
   });
-
   const isLoading = useMemo(
     () => status === "streaming" || status === "submitted",
     [status],
@@ -245,6 +245,11 @@ function DrawerTemporaryContent({
   const [temporaryChat, appStoreMutate] = appStore(
     useShallow((state) => [state.temporaryChat, state.mutate]),
   );
+  const { isSteering, sendSteeringMessage } = useChatSteering({
+    status,
+    sendMessage,
+    stop,
+  });
 
   useEffect(() => {
     containerRef.current?.scrollTo({
@@ -348,7 +353,7 @@ function DrawerTemporaryContent({
       <div className={"w-full my-6 mt-auto"}>
         <PromptInput
           input={input}
-          sendMessage={sendMessage}
+          sendMessage={sendSteeringMessage}
           disabledMention={true}
           model={temporaryChat.chatModel}
           setModel={setModel}
@@ -357,6 +362,8 @@ function DrawerTemporaryContent({
           setInput={setInput}
           voiceDisabled
           isLoading={isLoading}
+          canSteer={isLoading}
+          isSteering={isSteering}
           onStop={stop}
         />
       </div>

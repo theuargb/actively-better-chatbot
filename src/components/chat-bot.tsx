@@ -1,38 +1,52 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import { toast } from "sonner";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import PromptInput from "./prompt-input";
-import clsx from "clsx";
 import { appStore } from "@/app/store";
+import { useChat } from "@ai-sdk/react";
+import clsx from "clsx";
 import { cn, createDebounce, generateUUID, truncateString } from "lib/utils";
-import { ErrorMessage, PreviewMessage } from "./message";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import { ChatGreeting } from "./chat-greeting";
+import { ErrorMessage, PreviewMessage } from "./message";
+import PromptInput from "./prompt-input";
 
-import { useShallow } from "zustand/shallow";
 import {
   DefaultChatTransport,
-  isToolUIPart,
-  lastAssistantMessageIsCompleteWithToolCalls,
   TextUIPart,
   UIMessage,
+  isToolUIPart,
+  lastAssistantMessageIsCompleteWithToolCalls,
 } from "ai";
 import { isMcpAuthRequiredToolResult } from "app-types/mcp";
+import { useShallow } from "zustand/shallow";
 
-import { safe } from "ts-safe";
-import { mutate } from "swr";
+import { deleteThreadAction } from "@/app/api/chat/actions";
+import { useGenerateThreadTitle } from "@/hooks/queries/use-generate-thread-title";
+import { useMcpList } from "@/hooks/queries/use-mcp-list";
+import { useChatSteering } from "@/hooks/use-chat-steering";
+import { useFileDragOverlay } from "@/hooks/use-file-drag-overlay";
+import { useToRef } from "@/hooks/use-latest";
+import { useMounted } from "@/hooks/use-mounted";
+import { useThreadFileUploader } from "@/hooks/use-thread-file-uploader";
+import {
+  type UrlRewriteIntent,
+  useUrlRewritePreset,
+} from "@/hooks/use-url-rewrite-preset";
 import {
   ChatApiSchemaRequestBody,
   ChatAttachment,
   ChatModel,
 } from "app-types/chat";
-import { useToRef } from "@/hooks/use-latest";
-import { isShortcutEvent, Shortcuts } from "lib/keyboard-shortcuts";
-import { Button } from "ui/button";
-import { deleteThreadAction } from "@/app/api/chat/actions";
+import { AnimatePresence, motion } from "framer-motion";
+import { getStorageManager } from "lib/browser-stroage";
+import { Shortcuts, isShortcutEvent } from "lib/keyboard-shortcuts";
+import { ArrowDown, FilePlus, Loader } from "lucide-react";
+import { useTranslations } from "next-intl";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { ArrowDown, Loader, FilePlus } from "lucide-react";
+import { mutate } from "swr";
+import { safe } from "ts-safe";
+import { Button } from "ui/button";
 import {
   Dialog,
   DialogContent,
@@ -41,20 +55,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "ui/dialog";
-import { useTranslations } from "next-intl";
 import { Think } from "ui/think";
-import { useGenerateThreadTitle } from "@/hooks/queries/use-generate-thread-title";
-import dynamic from "next/dynamic";
-import { useMounted } from "@/hooks/use-mounted";
-import { getStorageManager } from "lib/browser-stroage";
-import { AnimatePresence, motion } from "framer-motion";
-import { useThreadFileUploader } from "@/hooks/use-thread-file-uploader";
-import { useFileDragOverlay } from "@/hooks/use-file-drag-overlay";
-import { useMcpList } from "@/hooks/queries/use-mcp-list";
-import {
-  useUrlRewritePreset,
-  type UrlRewriteIntent,
-} from "@/hooks/use-url-rewrite-preset";
 
 type Props = {
   threadId: string;
@@ -255,6 +256,11 @@ export default function ChatBot({
       }
     },
     onFinish,
+  });
+  const { isSteering, sendSteeringMessage } = useChatSteering({
+    status,
+    sendMessage,
+    stop,
   });
   const [isDeleteThreadPopupOpen, setIsDeleteThreadPopupOpen] = useState(false);
 
@@ -536,9 +542,11 @@ export default function ChatBot({
           <PromptInput
             input={input}
             threadId={threadId}
-            sendMessage={sendMessage}
+            sendMessage={sendSteeringMessage}
             setInput={setInput}
             isLoading={isLoading || isPendingToolCall}
+            canSteer={isLoading}
+            isSteering={isSteering}
             onStop={stop}
             onFocus={isFirstTime ? undefined : handleFocus}
           />

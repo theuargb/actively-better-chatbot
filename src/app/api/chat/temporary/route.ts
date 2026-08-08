@@ -1,20 +1,20 @@
-import { getSession } from "auth/server";
 import {
   UIMessage,
   convertToModelMessages,
   smoothStream,
   streamText,
 } from "ai";
+import { getSession } from "auth/server";
 import { customModelProvider } from "lib/ai/models";
-import globalLogger from "logger";
 import {
   buildCurrentDateSystemPrompt,
   buildUserSystemStaticPrompt,
 } from "lib/ai/prompts";
-import { getUserPreferences } from "lib/user/server";
 import { getAiRateLimiter } from "lib/ai/rate-limit";
-import { buildRateLimitMessage } from "lib/ai/rate-limit-message";
 import { getUserPlanCode, parseRoles } from "lib/ai/rate-limit-context";
+import { buildRateLimitMessage } from "lib/ai/rate-limit-message";
+import { getUserPreferences } from "lib/user/server";
+import globalLogger from "logger";
 
 import { colorize } from "consola/utils";
 
@@ -73,6 +73,7 @@ export async function POST(request: Request) {
         ...convertToModelMessages(messages),
       ],
       experimental_transform: smoothStream({ chunking: "word" }),
+      abortSignal: request.signal,
     }).toUIMessageStreamResponse();
   } catch (error: any) {
     logger.error(error);
