@@ -19,6 +19,7 @@
 - `theuargb:feat-oauth-first-name`
 - `theuargb:fix-await-thread-title-generation`
 - `theuargb:fix-text-message-part-inline-buttons-visibility-mobile`
+- `theuargb:feat-allow-steering`
 
 
 #### Features
