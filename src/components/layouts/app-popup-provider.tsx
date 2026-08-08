@@ -61,8 +61,10 @@ const UserSettingsPopup = dynamic(
 
 export function AppPopupProvider({
   userSettingsComponent,
+  bannerComponent,
 }: {
   userSettingsComponent: React.ReactNode;
+  bannerComponent?: React.ReactNode;
 }) {
   return (
     <>
@@ -72,6 +74,7 @@ export function AppPopupProvider({
       <ChatBotVoice />
       <ChatBotTemporary />
       <McpCustomizationPopup />
+      {bannerComponent}
     </>
   );
 }

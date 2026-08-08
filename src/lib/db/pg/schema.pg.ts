@@ -30,6 +30,7 @@ import type {
   PromptAdModel,
   PromptAdVariant,
 } from "app-types/prompt-ad";
+import type { BannerVariant } from "app-types/banner";
 
 export const ChatThreadTable = pgTable("chat_thread", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
@@ -471,6 +472,60 @@ export const PromptAdTable = pgTable(
 );
 
 export type PromptAdEntity = typeof PromptAdTable.$inferSelect;
+
+export const BannerTable = pgTable(
+  "banner",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    imageUrl: varchar("image_url", { length: 1024 }),
+    /** Both null means "always"; either end can be left open. */
+    startAt: timestamp("start_at"),
+    endAt: timestamp("end_at"),
+    enabled: boolean("enabled").notNull().default(true),
+    /** Wipes the viewer's persisted client state once they dismiss it. */
+    resetState: boolean("reset_state").notNull().default(false),
+    variants: json("variants").notNull().$type<BannerVariant[]>().default([]),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [
+    index("banner_enabled_idx").on(t.enabled),
+    index("banner_created_at_idx").on(t.createdAt),
+  ],
+);
+
+export type BannerEntity = typeof BannerTable.$inferSelect;
+
+/** One row per (user, banner) - the unique constraint is what makes a banner
+ * show exactly once, even if two tabs dismiss it at the same moment. */
+export const BannerDismissalTable = pgTable(
+  "banner_dismissal",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    bannerId: uuid("banner_id")
+      .notNull()
+      .references(() => BannerTable.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    dismissedAt: timestamp("dismissed_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [
+    unique().on(t.userId, t.bannerId),
+    index("banner_dismissal_user_id_idx").on(t.userId),
+  ],
+);
+
+export type BannerDismissalEntity = typeof BannerDismissalTable.$inferSelect;
 
 export type ArchiveEntity = typeof ArchiveTable.$inferSelect;
 export type ArchiveItemEntity = typeof ArchiveItemTable.$inferSelect;
