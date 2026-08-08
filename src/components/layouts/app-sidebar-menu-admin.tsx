@@ -9,7 +9,14 @@ import {
 import { Tooltip } from "ui/tooltip";
 import { SidebarMenuItem } from "ui/sidebar";
 import { SidebarMenuButton } from "ui/sidebar";
-import { ChartColumn, CreditCard, Link2, Shield, Users } from "lucide-react";
+import {
+  ChartColumn,
+  CreditCard,
+  Link2,
+  Megaphone,
+  Shield,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
@@ -49,6 +56,13 @@ const AppSidebarAdmin = () => {
         url: "/admin/url-rewrites",
         icon: Link2,
         isActive: pathname.startsWith("/admin/url-rewrites"),
+      },
+      {
+        id: "prompt-ads",
+        title: t("PromptAds.title"),
+        url: "/admin/prompt-ads",
+        icon: Megaphone,
+        isActive: pathname.startsWith("/admin/prompt-ads"),
       },
     ],
     [t, pathname],

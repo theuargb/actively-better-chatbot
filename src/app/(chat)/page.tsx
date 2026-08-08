@@ -3,6 +3,7 @@ import { generateUUID } from "lib/utils";
 import { getSession } from "auth/server";
 import { redirect } from "next/navigation";
 import { readGotoIntent } from "lib/url-rewrite/server";
+import { getPromptAdsForLocale } from "lib/prompt-ad/server";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export default async function HomePage() {
   // A pending `/goto/{slug}` link is resolved here: every auth path lands on
   // this page, so a preset survives sign-in, sign-up and OAuth round trips.
   const urlRewriteIntent = await readGotoIntent(session.user.id);
+  const promptAds = await getPromptAdsForLocale();
   const id = generateUUID();
   return (
     <ChatBot
@@ -21,6 +23,7 @@ export default async function HomePage() {
       threadId={id}
       key={id}
       urlRewriteIntent={urlRewriteIntent}
+      promptAds={promptAds}
     />
   );
 }

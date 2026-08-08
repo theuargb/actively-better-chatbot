@@ -134,6 +134,13 @@
       "when": 1785432692183,
       "tag": "0018_loving_tinkerer",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1786213290473,
+      "tag": "0019_sleepy_whiplash",
+      "breakpoints": true
     }
   ]
 }
