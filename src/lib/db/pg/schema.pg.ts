@@ -24,6 +24,12 @@ import type {
   UrlRewriteTarget,
   UrlRewriteTargetKind,
 } from "app-types/url-rewrite";
+import type {
+  PromptAdIcon,
+  PromptAdMode,
+  PromptAdModel,
+  PromptAdVariant,
+} from "app-types/prompt-ad";
 
 export const ChatThreadTable = pgTable("chat_thread", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
@@ -433,6 +439,38 @@ export const UrlRewriteTable = pgTable(
 );
 
 export type UrlRewriteEntity = typeof UrlRewriteTable.$inferSelect;
+
+export const PromptAdTable = pgTable(
+  "prompt_ad",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    icon: json("icon").notNull().$type<PromptAdIcon>(),
+    mode: varchar("mode", { length: 16 })
+      .notNull()
+      .$type<PromptAdMode>()
+      .default("send"),
+    enabled: boolean("enabled").notNull().default(true),
+    expiresAt: timestamp("expires_at"),
+    /** Null means every model; otherwise the ad only shows for these. */
+    models: json("models").$type<PromptAdModel[]>(),
+    variants: json("variants").notNull().$type<PromptAdVariant[]>().default([]),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [
+    index("prompt_ad_enabled_idx").on(t.enabled),
+    index("prompt_ad_created_at_idx").on(t.createdAt),
+  ],
+);
+
+export type PromptAdEntity = typeof PromptAdTable.$inferSelect;
 
 export type ArchiveEntity = typeof ArchiveTable.$inferSelect;
 export type ArchiveItemEntity = typeof ArchiveItemTable.$inferSelect;

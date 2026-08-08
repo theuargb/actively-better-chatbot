@@ -55,6 +55,8 @@ import {
   useUrlRewritePreset,
   type UrlRewriteIntent,
 } from "@/hooks/use-url-rewrite-preset";
+import { PromptAdSuggestions } from "./prompt-ad-suggestions";
+import type { PromptAdsPayload } from "app-types/prompt-ad";
 
 type Props = {
   threadId: string;
@@ -62,6 +64,8 @@ type Props = {
   selectedChatModel?: string;
   /** Preset carried by an admin-created `/goto/{slug}` link, if any. */
   urlRewriteIntent?: UrlRewriteIntent | null;
+  /** Admin-managed starter examples, only rendered while the chat is empty. */
+  promptAds?: PromptAdsPayload;
 };
 
 const LightRays = dynamic(() => import("ui/light-rays"), {
@@ -82,6 +86,7 @@ export default function ChatBot({
   threadId,
   initialMessages,
   urlRewriteIntent,
+  promptAds = { ads: [], count: 0 },
 }: Props) {
   useMcpList();
   const chatT = useTranslations("Chat");
@@ -542,6 +547,16 @@ export default function ChatBot({
             onStop={stop}
             onFocus={isFirstTime ? undefined : handleFocus}
           />
+
+          {emptyMessage && (
+            <PromptAdSuggestions
+              ads={promptAds.ads}
+              count={promptAds.count}
+              isLoading={isLoading || isPendingToolCall}
+              setInput={setInput}
+              sendMessage={sendMessage}
+            />
+          )}
         </div>
         <DeleteThreadPopup
           threadId={threadId}
