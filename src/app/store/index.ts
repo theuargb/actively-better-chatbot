@@ -38,9 +38,6 @@ export interface AppState {
   threadFiles: {
     [threadId: string]: UploadedFile[];
   };
-  threadImageToolModel: {
-    [threadId: string]: string | undefined;
-  };
   toolPresets: {
     allowedMcpServers?: Record<string, AllowedMCPServer>;
     allowedAppDefaultToolkit?: AppDefaultToolkit[];
@@ -77,7 +74,6 @@ const initialState: AppState = {
   generatingTitleThreadIds: [],
   threadMentions: {},
   threadFiles: {},
-  threadImageToolModel: {},
   mcpList: [],
   agentList: [],
   workflowToolList: [],

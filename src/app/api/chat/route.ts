@@ -19,6 +19,7 @@ import {
 import globalLogger from "logger";
 import {
   buildCurrentDateSystemPrompt,
+  buildImageToolSystemPrompt,
   buildMcpServerCustomizationsSystemPrompt,
   buildUserSystemStaticPrompt,
   buildToolCallUnsupportedModelSystemPrompt,
@@ -52,6 +53,10 @@ import { getSession } from "auth/server";
 import { colorize } from "consola/utils";
 import { generateUUID } from "lib/utils";
 import { nanoBananaTool, openaiImageTool } from "lib/ai/tools/image";
+import {
+  canUseDefaultImageTool,
+  resolveImageToolProvider,
+} from "lib/ai/tools/image/resolve-provider";
 import { ImageToolName } from "lib/ai/tools";
 import { buildCsvIngestionPreviewParts } from "@/lib/ai/ingest/csv-ingest";
 import { serverFileStorage } from "lib/file-storage";
@@ -121,7 +126,6 @@ export async function POST(request: Request) {
       toolChoice,
       allowedAppDefaultToolkit,
       allowedMcpServers,
-      imageTool,
       mentions = [],
       attachments = [],
     } = chatApiSchemaRequestBodySchema.parse(json);
@@ -285,12 +289,15 @@ export async function POST(request: Request) {
       mentions.push(...agent.instructions.mentions);
     }
 
-    const useImageTool = Boolean(imageTool?.model);
+    const imageToolProvider = canUseDefaultImageTool({
+      supportToolCall,
+      toolChoice,
+    })
+      ? resolveImageToolProvider()
+      : undefined;
 
     const isToolCallAllowed =
-      supportToolCall &&
-      (toolChoice != "none" || mentions.length > 0) &&
-      !useImageTool;
+      supportToolCall && (toolChoice != "none" || mentions.length > 0);
 
     const metadata: ChatMetadata = {
       agentId: agent?.id,
@@ -383,15 +390,16 @@ export async function POST(request: Request) {
         const systemPrompt = mergeSystemPrompt(
           buildUserSystemStaticPrompt(session.user, userPreferences, agent),
           buildMcpServerCustomizationsSystemPrompt(mcpServerCustomizations),
+          imageToolProvider && buildImageToolSystemPrompt(),
           !supportToolCall && buildToolCallUnsupportedModelSystemPrompt,
         );
 
         const dynamicSystemPrompt = buildCurrentDateSystemPrompt();
 
-        const IMAGE_TOOL: Record<string, Tool> = useImageTool
+        const IMAGE_TOOL: Record<string, Tool> = imageToolProvider
           ? {
               [ImageToolName]:
-                imageTool?.model === "google"
+                imageToolProvider === "google"
                   ? nanoBananaTool
                   : openaiImageTool,
             }
@@ -426,13 +434,9 @@ export async function POST(request: Request) {
         logger.info(
           `allowedMcpTools: ${allowedMcpTools.length ?? 0}, allowedAppDefaultToolkit: ${allowedAppDefaultToolkit?.length ?? 0}`,
         );
-        if (useImageTool) {
-          logger.info(`binding tool count Image: ${imageTool?.model}`);
-        } else {
-          logger.info(
-            `binding tool count APP_DEFAULT: ${Object.keys(APP_DEFAULT_TOOLS ?? {}).length}, MCP: ${Object.keys(MCP_TOOLS ?? {}).length}, Workflow: ${Object.keys(WORKFLOW_TOOLS ?? {}).length}`,
-          );
-        }
+        logger.info(
+          `binding tool count APP_DEFAULT: ${Object.keys(APP_DEFAULT_TOOLS ?? {}).length}, MCP: ${Object.keys(MCP_TOOLS ?? {}).length}, Workflow: ${Object.keys(WORKFLOW_TOOLS ?? {}).length}, Image: ${imageToolProvider ?? "disabled"}`,
+        );
         logger.info(`model: ${chatModel?.provider}/${chatModel?.model}`);
 
         const result = streamText({

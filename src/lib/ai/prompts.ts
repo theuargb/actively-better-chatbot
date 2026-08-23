@@ -68,6 +68,13 @@ export const buildCurrentDateSystemPrompt = () => {
   return `The current date is ${currentDate}.`;
 };
 
+export const buildImageToolSystemPrompt = () =>
+  `
+<image_generation>
+The image-generation tool is available. Use it only when the user explicitly asks you to create, edit, transform, combine, or otherwise produce an image. Do not generate an image merely because a visual could be helpful. Choose create for a new image, edit to modify an existing image, and composite to combine images.
+</image_generation>
+`.trim();
+
 export const buildUserSystemStaticPrompt = (
   user?: User,
   userPreferences?: UserPreferences,

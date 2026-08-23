@@ -114,7 +114,6 @@ export default function ChatBot({
     threadList,
     threadMentions,
     pendingThreadMention,
-    threadImageToolModel,
   ] = appStore(
     useShallow((state) => [
       state.mutate,
@@ -125,7 +124,6 @@ export default function ChatBot({
       state.threadList,
       state.threadMentions,
       state.pendingThreadMention,
-      state.threadImageToolModel,
     ]),
   );
 
@@ -238,9 +236,6 @@ export default function ChatBot({
             : latestRef.current.allowedMcpServers,
           mentions: latestRef.current.mentions,
           message: sanitizedLastMessage,
-          imageTool: {
-            model: latestRef.current.threadImageToolModel[threadId],
-          },
           attachments,
         };
         return { body: requestBody };
@@ -288,7 +283,6 @@ export default function ChatBot({
     threadList,
     threadId,
     mentions: threadMentions[threadId],
-    threadImageToolModel,
   });
 
   const isLoading = useMemo(
