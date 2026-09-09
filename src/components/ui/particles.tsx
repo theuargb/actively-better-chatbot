@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import { Renderer, Camera, Geometry, Program, Mesh } from "ogl";
+import { Camera, Geometry, Program, Mesh } from "ogl";
+import { createOglRenderer } from "@/lib/browser/ogl-renderer";
 import { useTheme } from "next-themes";
 
 interface ParticlesProps {
@@ -131,7 +132,11 @@ const Particles: React.FC<ParticlesProps> = ({
     const container = containerRef.current;
     if (!container) return;
 
-    const renderer = new Renderer({ depth: false, alpha: true });
+    const renderer = createOglRenderer("Particles", {
+      depth: false,
+      alpha: true,
+    });
+    if (!renderer) return;
     const gl = renderer.gl;
     container.appendChild(gl.canvas);
     gl.clearColor(0, 0, 0, 0);

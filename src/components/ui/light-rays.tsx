@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState, useMemo } from "react";
 import { Renderer, Program, Triangle, Mesh } from "ogl";
 import { useTheme } from "next-themes";
+import { createOglRenderer } from "@/lib/browser/ogl-renderer";
 
 export type RaysOrigin =
   | "top-center"
@@ -174,19 +175,13 @@ const LightRays: React.FC<LightRaysProps> = ({
         return;
       }
 
-      let renderer: Renderer;
-      try {
-        renderer = new Renderer({
-          canvas,
-          dpr: Math.min(window.devicePixelRatio, 2),
-          alpha: true,
-        });
-      } catch (error) {
+      const renderer = createOglRenderer("Light rays", {
+        canvas,
+        dpr: Math.min(window.devicePixelRatio, 2),
+        alpha: true,
+      });
+      if (!renderer) {
         webGLUnavailableRef.current = true;
-        console.error(
-          "Light rays disabled: WebGL initialization failed",
-          error,
-        );
         return;
       }
 
