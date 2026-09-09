@@ -30,6 +30,14 @@ interface LightRaysProps {
   className?: string;
 }
 
+export const supportsWebGL = (canvas: HTMLCanvasElement) => {
+  try {
+    return Boolean(canvas.getContext("webgl2") || canvas.getContext("webgl"));
+  } catch {
+    return false;
+  }
+};
+
 const hexToRgb = (hex: string): [number, number, number] => {
   const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return m
@@ -116,6 +124,7 @@ const LightRays: React.FC<LightRaysProps> = ({
   const animationIdRef = useRef<number | null>(null);
   const meshRef = useRef<any>(null);
   const cleanupFunctionRef = useRef<(() => void) | null>(null);
+  const webGLUnavailableRef = useRef(false);
   const [isVisible, setIsVisible] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
@@ -141,24 +150,50 @@ const LightRays: React.FC<LightRaysProps> = ({
   }, []);
 
   useEffect(() => {
-    if (!isVisible || !containerRef.current) return;
+    if (!isVisible || !containerRef.current || webGLUnavailableRef.current)
+      return;
 
     if (cleanupFunctionRef.current) {
       cleanupFunctionRef.current();
       cleanupFunctionRef.current = null;
     }
 
+    let cancelled = false;
+
     const initializeWebGL = async () => {
       if (!containerRef.current) return;
 
       await new Promise((resolve) => requestAnimationFrame(resolve));
 
-      if (!containerRef.current) return;
+      if (cancelled || !containerRef.current) return;
 
-      const renderer = new Renderer({
-        dpr: Math.min(window.devicePixelRatio, 2),
-        alpha: true,
-      });
+      const canvas = document.createElement("canvas");
+      if (!supportsWebGL(canvas)) {
+        webGLUnavailableRef.current = true;
+        console.warn("Light rays disabled: WebGL is unavailable");
+        return;
+      }
+
+      let renderer: Renderer;
+      try {
+        renderer = new Renderer({
+          canvas,
+          dpr: Math.min(window.devicePixelRatio, 2),
+          alpha: true,
+        });
+      } catch (error) {
+        webGLUnavailableRef.current = true;
+        console.error(
+          "Light rays disabled: WebGL initialization failed",
+          error,
+        );
+        return;
+      }
+
+      if (cancelled || !containerRef.current) {
+        renderer.gl.getExtension("WEBGL_lose_context")?.loseContext();
+        return;
+      }
       rendererRef.current = renderer;
 
       const gl = renderer.gl;
@@ -366,7 +401,7 @@ void main() {
       animationIdRef.current = requestAnimationFrame(loop);
 
       cleanupFunctionRef.current = () => {
-        if (animationIdRef.current) {
+        if (animationIdRef.current !== null) {
           cancelAnimationFrame(animationIdRef.current);
           animationIdRef.current = null;
         }
@@ -403,9 +438,13 @@ void main() {
       };
     };
 
-    initializeWebGL();
+    initializeWebGL().catch((error) => {
+      webGLUnavailableRef.current = true;
+      console.error("Light rays disabled: initialization failed", error);
+    });
 
     return () => {
+      cancelled = true;
       if (cleanupFunctionRef.current) {
         cleanupFunctionRef.current();
         cleanupFunctionRef.current = null;
