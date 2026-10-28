@@ -208,6 +208,10 @@
     "threadLimitKeepsContextSharp": "Shorter chats keep responses sharper.",
     "threadLimitWarningTitle": "{remaining, plural, =1 {1 message left} other {# messages left}} in this chat",
     "threadLimitWarningDescription": "This chat is capped at {limit} messages. Start a new one when you hit it.",
+    "modelLockedTitle": "This model needs a higher plan",
+    "modelLockedDescription": "{model} is available on {plan} and higher.",
+    "modelLockedUnavailable": "{model} isn't available on any plan right now.",
+    "seePlans": "See plans",
     "uploadImage": "Upload File",
     "generateImage": "Generate Image",
     "imageUploadedSuccessfully": "Image uploaded successfully",
@@ -409,7 +413,8 @@
     "showLessChats": "Show less",
     "reportAnIssue": "Report an issue",
     "joinCommunity": "Join Community",
-    "userSettings": "User Settings"
+    "userSettings": "User Settings",
+    "plansAndBilling": "Plans & billing"
   },
   "Archive": {
     "title": "Archive",
@@ -728,6 +733,26 @@
       }
     }
   },
+  "Pricing": {
+    "title": "Plans & billing",
+    "description": "Choose the plan that fits how you use the assistant.",
+    "monthly": "Monthly",
+    "annual": "Annual",
+    "perMonth": "/ month",
+    "perYear": "/ year",
+    "currentPlan": "Current plan",
+    "subscribe": "Subscribe",
+    "switchPlan": "Switch to this plan",
+    "manageBilling": "Manage billing",
+    "resume": "Resume subscription",
+    "cancelsOn": "Cancels on {date}",
+    "renewsOn": "Renews on {date}",
+    "notPurchasable": "Available on request",
+    "assignedByAdmin": "Assigned by an administrator",
+    "billingDisabled": "Online payments are not available yet.",
+    "checkoutSuccess": "Your subscription is active.",
+    "checkoutFailed": "Couldn't start checkout. Please try again."
+  },
   "Admin": {
     "title": "Admin",
     "Sidebar": {
@@ -739,6 +764,9 @@
     },
     "Plans": {
       "title": "Plans"
+    },
+    "Models": {
+      "title": "Model access"
     },
     "Users": {
       "title": "Users",

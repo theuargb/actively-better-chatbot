@@ -1,21 +1,21 @@
 import { customModelProvider } from "lib/ai/models";
 import {
   ConditionNodeData,
-  OutputNodeData,
-  LLMNodeData,
-  InputNodeData,
-  WorkflowNodeData,
-  ToolNodeData,
   HttpNodeData,
-  TemplateNodeData,
+  InputNodeData,
+  LLMNodeData,
+  OutputNodeData,
   OutputSchemaSourceKey,
+  TemplateNodeData,
+  ToolNodeData,
+  WorkflowNodeData,
 } from "../workflow.interface";
 import { WorkflowRuntimeState } from "./graph-store";
 import {
+  UIMessage,
   convertToModelMessages,
   generateObject,
   generateText,
-  UIMessage,
 } from "ai";
 import { checkConditionBranch } from "../condition";
 import {
@@ -27,11 +27,12 @@ import { toAny } from "lib/utils";
 import { AppError } from "lib/errors";
 import { DefaultToolName } from "lib/ai/tools";
 import {
-  exaSearchToolForWorkflow,
   exaContentsToolForWorkflow,
+  exaSearchToolForWorkflow,
 } from "lib/ai/tools/web/web-search";
 import { mcpClientsManager } from "lib/ai/mcp/mcp-manager";
 import type { MCPUserContext } from "lib/ai/mcp/create-mcp-clients-manager";
+import { assertModelAccess } from "lib/plan/server";
 
 /**
  * Interface for node executor functions.
@@ -92,7 +93,13 @@ export const outputNodeExecutor: NodeExecutor<OutputNodeData> = ({
 export const llmNodeExecutor: NodeExecutor<LLMNodeData> = async ({
   node,
   state,
+  mcpContext,
 }) => {
+  // Fail closed: a model's plan gate cannot be checked without a user.
+  if (!mcpContext) {
+    throw new Error("LLM node execution requires authenticated user context");
+  }
+  await assertModelAccess(mcpContext.userId, node.model);
   const model = customModelProvider.getModel(node.model);
 
   // Convert TipTap JSON messages to AI SDK format, resolving mentions to actual data
@@ -216,6 +223,12 @@ export const toolNodeExecutor: NodeExecutor<ToolNodeData> = async ({
         ).parts[0]?.text
       : undefined;
 
+    if (!mcpContext) {
+      throw new Error(
+        "Tool node execution requires authenticated user context",
+      );
+    }
+    await assertModelAccess(mcpContext.userId, node.model);
     const response = await generateText({
       model: customModelProvider.getModel(node.model),
       toolChoice: "required", // Force the model to call the tool

@@ -62,7 +62,9 @@ import { buildCsvIngestionPreviewParts } from "@/lib/ai/ingest/csv-ingest";
 import { serverFileStorage } from "lib/file-storage";
 import { getAiRateLimiter, getMaxChatLength } from "lib/ai/rate-limit";
 import { buildRateLimitMessage } from "lib/ai/rate-limit-message";
-import { getUserPlanCode, parseRoles } from "lib/ai/rate-limit-context";
+import { parseRoles } from "lib/ai/rate-limit-context";
+import { buildModelLockedMessage } from "lib/plan/model-locked-message";
+import { checkModelAccess, getEffectivePlan } from "lib/plan/server";
 
 const logger = globalLogger.withDefaults({
   message: colorize("blackBright", `Chat API: `),
@@ -132,9 +134,24 @@ export async function POST(request: Request) {
     const resolvedModel = customModelProvider.resolveModel(chatModel);
     const model = resolvedModel.model;
     const isUserMessage = message.role === "user";
-    const planCode = isUserMessage
-      ? await getUserPlanCode(session.user.id)
-      : null;
+    // Model access is enforced on every request: only rate limits are skipped
+    // for tool-continuation turns, an entitlement bypass would not be.
+    const effectivePlan = await getEffectivePlan(session.user.id);
+    const planCode = effectivePlan?.code ?? null;
+    const access = await checkModelAccess(
+      session.user.id,
+      resolvedModel.identity,
+      effectivePlan,
+    );
+    if (!access.ok) {
+      return new Response(
+        buildModelLockedMessage({
+          model: resolvedModel.identity.model,
+          requiredPlanName: access.requiredPlanName,
+        }),
+        { status: 403 },
+      );
+    }
     const roles = parseRoles((session.user as { role?: string }).role);
     const rateLimiter = getAiRateLimiter();
     if (isUserMessage && rateLimiter) {

@@ -7,11 +7,13 @@ import {
   MessageSquarePlus,
   SquarePen,
   TriangleAlert,
+  Lock,
 } from "lucide-react";
 
 import { Button } from "ui/button";
 import { Separator } from "ui/separator";
 import type { RateLimitMessagePayload } from "lib/ai/rate-limit-message";
+import type { ModelLockedPayload } from "lib/plan/model-locked-message";
 
 /**
  * Shared shell so the rate-limit and thread-limit notices read as one family:
@@ -115,6 +117,34 @@ export function ThreadLimitNotice({ limit }: { limit: number }) {
       <span className="text-xs text-muted-foreground">
         {t("threadLimitKeepsContextSharp")}
       </span>
+    </LimitNotice>
+  );
+}
+
+export function ModelLockedNotice({
+  payload,
+}: {
+  payload: ModelLockedPayload;
+}) {
+  const t = useTranslations("Chat");
+  const router = useRouter();
+
+  return (
+    <LimitNotice
+      icon={<Lock className="size-4" />}
+      title={t("modelLockedTitle")}
+      description={
+        payload.requiredPlanName
+          ? t("modelLockedDescription", {
+              model: payload.model,
+              plan: payload.requiredPlanName,
+            })
+          : t("modelLockedUnavailable", { model: payload.model })
+      }
+    >
+      <Button size="sm" className="h-8" onClick={() => router.push("/pricing")}>
+        {t("seePlans")}
+      </Button>
     </LimitNotice>
   );
 }
