@@ -33,6 +33,8 @@ export type PricingCard = {
   /** Monthly price; "0" for the synthesized Free card. */
   price: string;
   annualPrice: string | null;
+  /** ISO 4217; the synthesized Free card borrows the first plan's currency. */
+  currency: string;
   hasAnnual: boolean;
   purchasable: boolean;
   /** Renders "Everything in {includesName}, plus:". */

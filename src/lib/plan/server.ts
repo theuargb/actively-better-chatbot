@@ -10,7 +10,6 @@ import type {
 import { isBillingEnabled } from "lib/billing/stripe";
 import { customModelProvider } from "lib/ai/models";
 import { planRepository } from "lib/db/repository";
-import { getPlanCurrency } from "./currency";
 import { pickEffectivePlan, planTier } from "./effective-plan";
 import { findUnlockingPlan, getModelMinTier } from "./model-access";
 import { buildPricingView } from "./pricing-view";
@@ -72,7 +71,6 @@ export type PricingPageData = {
   view: PricingView;
   subscription: UserSubscriptionSummary | null;
   billingEnabled: boolean;
-  currency: string;
 };
 
 /** `free` carries the localized name/description of the synthesized Free card. */
@@ -107,7 +105,6 @@ export async function getPricingPageData(
     }),
     subscription,
     billingEnabled,
-    currency: getPlanCurrency(),
   };
 }
 

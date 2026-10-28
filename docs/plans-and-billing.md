@@ -63,10 +63,10 @@ hides checkout.
 
 Setup:
 
-1. In Stripe create a recurring **monthly** price (and optionally an annual one)
-   per paid plan, in `PLAN_CURRENCY`.
+1. In Stripe create a recurring **monthly** price (and optionally an annual one,
+   in the same currency) per paid plan.
 2. Admin → Plans: paste the `price_…` id into the plan. Saving reads the price
-   from Stripe and stores its amount, so the displayed price cannot drift from
+   from Stripe and stores its amount and currency, so the displayed price cannot drift from
    what Checkout charges. A plan with a Stripe price id has an immutable `code`
    (Stripe subscriptions reference it).
 3. Add a webhook endpoint `https://<host>/api/auth/stripe/webhook` with events

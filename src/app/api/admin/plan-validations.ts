@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ActionState } from "lib/action-utils";
 import { Plan } from "app-types/plan";
+import { DEFAULT_PLAN_CURRENCY, ISO_4217 } from "lib/plan/currency";
 
 const planCode = z
   .string()
@@ -27,6 +28,12 @@ const planFields = {
   description: z.string().trim().max(10_000).default(""),
   features: z.string().default(""),
   price: z.coerce.number().finite().min(0, "Price cannot be negative"),
+  currency: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(ISO_4217, "Use a 3-letter ISO 4217 code, e.g. USD")
+    .default(DEFAULT_PLAN_CURRENCY),
   tier: z.coerce.number().int().min(0).max(1000).default(1),
   stripePriceId,
   stripeAnnualPriceId: stripePriceId,

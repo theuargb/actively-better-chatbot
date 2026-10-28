@@ -5,13 +5,7 @@ import { Button } from "ui/button";
 import { Badge } from "ui/badge";
 import { formatPlanPrice } from "lib/plan/currency";
 
-export function PlansTable({
-  plans,
-  currency,
-}: {
-  plans: Plan[];
-  currency: string;
-}) {
+export function PlansTable({ plans }: { plans: Plan[] }) {
   return (
     <div className="w-full max-w-4xl mx-auto p-6 space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -56,10 +50,10 @@ export function PlansTable({
                 ) : null}
               </div>
               <span className="shrink-0 text-right text-sm font-medium tabular-nums">
-                {formatPlanPrice(plan.price, currency)}
+                {formatPlanPrice(plan.price, plan.currency)}
                 {plan.annualPrice ? (
                   <span className="block text-xs font-normal text-muted-foreground">
-                    {formatPlanPrice(plan.annualPrice, currency)} / year
+                    {formatPlanPrice(plan.annualPrice, plan.currency)} / year
                   </span>
                 ) : null}
               </span>

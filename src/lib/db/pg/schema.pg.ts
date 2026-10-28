@@ -123,6 +123,8 @@ export const PlanTable = pgTable("plan", {
   description: text("description").notNull().default(""),
   features: json("features").$type<string[]>().notNull().default([]),
   price: numeric("price", { precision: 12, scale: 2 }).notNull(),
+  /** ISO 4217 code; synced from the Stripe price when the plan has one. */
+  currency: varchar("currency", { length: 3 }).notNull().default("USD"),
   /** Rank used for model gating; higher unlocks more. Users without a plan are tier 0. */
   tier: integer("tier").notNull().default(1),
   annualPrice: numeric("annual_price", { precision: 12, scale: 2 }),

@@ -1517,3 +1517,34 @@
     @apply transition-colors duration-300;
   }
 }
+
+/* Pricing page ambient motion; callers gate it behind `motion-safe:`. */
+@keyframes pricing-aurora {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(6%, -8%, 0) scale(1.2);
+  }
+}
+
+@keyframes pricing-shimmer {
+  0% {
+    transform: translateX(-150%) skewX(-12deg);
+  }
+  60%,
+  100% {
+    transform: translateX(350%) skewX(-12deg);
+  }
+}
+
+@keyframes pricing-gradient-pan {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}

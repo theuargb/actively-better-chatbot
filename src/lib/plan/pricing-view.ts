@@ -5,6 +5,7 @@ import type {
   PricingView,
   UserSubscriptionSummary,
 } from "app-types/plan";
+import { DEFAULT_PLAN_CURRENCY } from "./currency";
 import { pickEffectivePlan, planTier } from "./effective-plan";
 
 export const FREE_CARD_ID = "free";
@@ -52,6 +53,7 @@ export function buildPricingView(input: PricingViewInput): PricingView {
     tier: p.tier,
     price: p.price,
     annualPrice: p.annualPrice,
+    currency: p.currency,
     hasAnnual: Boolean(p.stripeAnnualPriceId) && p.annualPrice != null,
     purchasable: billingEnabled && Boolean(p.stripePriceId),
   }));
@@ -65,6 +67,7 @@ export function buildPricingView(input: PricingViewInput): PricingView {
       tier: 0,
       price: "0",
       annualPrice: null,
+      currency: active[0]?.currency ?? DEFAULT_PLAN_CURRENCY,
       hasAnnual: false,
       purchasable: false,
     });

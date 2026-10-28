@@ -1,7 +1,7 @@
 // No "server-only": auth-instance.ts is also loaded by seed scripts.
 import type { StripePlan } from "@better-auth/stripe";
 import { planRepository } from "lib/db/repository";
-import { fromStripeAmount, getPlanCurrency } from "lib/plan/currency";
+import { fromStripeAmount } from "lib/plan/currency";
 import Stripe from "stripe";
 
 export const isBillingEnabled = () =>
@@ -42,15 +42,22 @@ export const cancelStripeSubscriptionsForUser = async (userId: string) => {
   }
 };
 
+export type ResolvedStripePrice = {
+  /** Decimal amount, e.g. "19.00". */
+  amount: string;
+  /** Uppercase ISO 4217 code. */
+  currency: string;
+};
+
 /**
- * Reads a price from Stripe and returns its amount in the app currency, so the
- * stored plan price can never drift from what Checkout charges. Throws with a
- * message an admin can act on.
+ * Reads a price from Stripe and returns its amount and currency, so the stored
+ * plan price can never drift from what Checkout charges. Throws with a message
+ * an admin can act on.
  */
 export const resolveStripePrice = async (
   priceId: string,
   interval: "month" | "year",
-): Promise<string> => {
+): Promise<ResolvedStripePrice> => {
   const stripe = getStripeClient();
   if (!stripe) throw new Error("Stripe is not configured (STRIPE_SECRET_KEY)");
 
@@ -68,14 +75,11 @@ export const resolveStripePrice = async (
       }`,
     );
   }
-  const currency = getPlanCurrency();
-  if (price.currency.toUpperCase() !== currency) {
-    throw new Error(
-      `Stripe price ${priceId} is in ${price.currency.toUpperCase()}, but PLAN_CURRENCY is ${currency}`,
-    );
-  }
   if (price.unit_amount === null) {
     throw new Error(`Stripe price ${priceId} has no fixed amount`);
   }
-  return fromStripeAmount(price.unit_amount, price.currency).toFixed(2);
+  return {
+    amount: fromStripeAmount(price.unit_amount, price.currency).toFixed(2),
+    currency: price.currency.toUpperCase(),
+  };
 };

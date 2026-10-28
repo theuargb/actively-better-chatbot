@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader } from "lucide-react";
 import { toast } from "sonner";
 import { Plan } from "app-types/plan";
+import { DEFAULT_PLAN_CURRENCY } from "lib/plan/currency";
 import { Button } from "ui/button";
 import {
   Card,
@@ -24,13 +25,7 @@ import {
   updatePlanAction,
 } from "@/app/api/admin/plan-actions";
 
-export function PlanForm({
-  plan,
-  currency,
-}: {
-  plan?: Plan;
-  currency: string;
-}) {
+export function PlanForm({ plan }: { plan?: Plan }) {
   const router = useRouter();
   const [active, setActive] = useState(plan?.active ?? true);
   const [code, setCode] = useState(plan?.code ?? "");
@@ -116,20 +111,32 @@ export function PlanForm({
                 label="Price"
                 hint={
                   stripePriceId.trim()
-                    ? "Synced from Stripe on save."
-                    : `Amount in ${currency}.`
+                    ? "Amount and currency are synced from Stripe on save."
+                    : "Monthly amount and ISO 4217 currency code."
                 }
               >
-                <Input
-                  name="price"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  defaultValue={plan?.price}
-                  readOnly={Boolean(stripePriceId.trim())}
-                  required
-                  placeholder="0.00"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    name="price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    defaultValue={plan?.price}
+                    readOnly={Boolean(stripePriceId.trim())}
+                    required
+                    placeholder="0.00"
+                  />
+                  <Input
+                    name="currency"
+                    aria-label="Currency"
+                    defaultValue={plan?.currency ?? DEFAULT_PLAN_CURRENCY}
+                    readOnly={Boolean(stripePriceId.trim())}
+                    required
+                    maxLength={3}
+                    pattern="[A-Za-z]{3}"
+                    className="w-20 font-mono uppercase"
+                  />
+                </div>
               </Field>
             </div>
 

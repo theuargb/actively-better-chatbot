@@ -1,23 +1,12 @@
-const ISO_4217 = /^[A-Z]{3}$/;
+export const ISO_4217 = /^[A-Z]{3}$/;
 
+/** Currency of plans without a Stripe price (and the column default). */
 export const DEFAULT_PLAN_CURRENCY = "USD";
 
 /**
- * Plans share one app-wide currency. An unset PLAN_CURRENCY falls back to USD; a
- * value that is set but malformed still throws, since that is a misconfiguration
- * rather than an absent setting.
+ * Whole amounts drop the decimals ("$10", not "$10.00") and the symbol is the
+ * narrow form ("$", "₴"), so prices stay short enough for a pricing card.
  */
-export const getPlanCurrency = (): string => {
-  const currency = process.env.PLAN_CURRENCY?.trim().toUpperCase();
-  if (!currency) return DEFAULT_PLAN_CURRENCY;
-  if (!ISO_4217.test(currency)) {
-    throw new Error(
-      `PLAN_CURRENCY must be a 3-letter ISO 4217 code, received "${currency}".`,
-    );
-  }
-  return currency;
-};
-
 export const formatPlanPrice = (
   price: string | number,
   currency: string,
@@ -25,14 +14,18 @@ export const formatPlanPrice = (
 ) => {
   const amount = Number(price);
   if (!Number.isFinite(amount)) return `${currency} ${price}`;
+  const fractionDigits = Number.isInteger(amount) ? 0 : 2;
   try {
     return new Intl.NumberFormat(locale, {
       style: "currency",
       currency,
+      currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
     }).format(amount);
   } catch {
     // Intl rejects codes it does not know; fall back to a plain rendering.
-    return `${currency} ${amount.toFixed(2)}`;
+    return `${currency} ${amount.toFixed(fractionDigits)}`;
   }
 };
 

@@ -9,6 +9,7 @@ import { cn } from "lib/utils";
 import { Gem, Loader, Sparkles } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "ui/button";
+import { GlowButton } from "./glow-button";
 
 export function CurrentPlanPanel({
   current,
@@ -56,10 +57,10 @@ export function CurrentPlanPanel({
   return (
     <div
       data-testid="current-plan-panel"
-      className="rounded-2xl border bg-card p-5 flex flex-wrap items-center gap-4"
+      className="flex flex-wrap items-center gap-4 rounded-2xl border bg-card/70 p-5 shadow-sm backdrop-blur-xl"
     >
       <div className="flex items-center gap-3">
-        <div className="size-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+        <div className="flex size-11 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 via-fuchsia-500 to-amber-400 text-white shadow-md shadow-fuchsia-500/30">
           <Gem className="size-5" />
         </div>
         <div>
@@ -112,14 +113,14 @@ export function CurrentPlanPanel({
             </>
           )}
           {!subscription && recommended && (
-            <Button onClick={() => onUpgrade(recommended)} disabled={busy}>
+            <GlowButton onClick={() => onUpgrade(recommended)} disabled={busy}>
               {pending === recommended.id ? (
                 <Loader className="size-4 animate-spin" />
               ) : (
                 <Sparkles className="size-4" />
               )}
               {t("upgradeTo", { plan: recommended.name })}
-            </Button>
+            </GlowButton>
           )}
         </div>
       )}
