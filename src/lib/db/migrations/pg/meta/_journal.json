@@ -155,6 +155,13 @@
       "when": 1793193256356,
       "tag": "0021_legal_yellowjacket",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1793197153465,
+      "tag": "0022_mixed_menace",
+      "breakpoints": true
     }
   ]
 }

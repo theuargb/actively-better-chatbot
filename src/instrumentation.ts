@@ -2,6 +2,15 @@ import { IS_VERCEL_ENV } from "lib/const";
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    // Malformed AI_RATE_LIMITS / AI_MODEL_MIN_TIERS must not boot with limits off.
+    // Dynamic import like the others below: register() also runs on the edge
+    // runtime, which must not bundle these Node-only modules.
+    try {
+      (await import("./lib/env-config-check")).checkCustomEnvConfig();
+    } catch (e) {
+      console.error(e);
+      process.exit(1);
+    }
     // Enable proxy support for undici (used by AI SDK) via HTTP_PROXY/HTTPS_PROXY env vars
     const proxyUrl =
       process.env.HTTPS_PROXY ||

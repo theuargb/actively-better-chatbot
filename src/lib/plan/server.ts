@@ -4,7 +4,7 @@ import type { ChatModel } from "app-types/chat";
 import type { EffectivePlan, PricingPlan } from "app-types/plan";
 import { isBillingEnabled } from "lib/billing/stripe";
 import { customModelProvider } from "lib/ai/models";
-import { modelAccessRepository, planRepository } from "lib/db/repository";
+import { planRepository } from "lib/db/repository";
 import { getPlanCurrency } from "./currency";
 import { pickEffectivePlan, planTier } from "./effective-plan";
 import { findUnlockingPlan, getModelMinTier } from "./model-access";
@@ -31,7 +31,7 @@ export async function checkModelAccess(
 ): Promise<ModelAccessResult> {
   const effectivePlan =
     plan === undefined ? await getEffectivePlan(userId) : plan;
-  const minTier = getModelMinTier(await modelAccessRepository.list(), identity);
+  const minTier = getModelMinTier(identity);
   if (planTier(effectivePlan) >= minTier) {
     return { ok: true, plan: effectivePlan };
   }

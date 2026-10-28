@@ -121,7 +121,9 @@ describe("RedisRateLimitStore", () => {
   it("enforces the limit end to end through the limiter", async () => {
     const redis = new FakeRedis();
     const limiter = new AiRateLimiter(new RedisRateLimitStore(redis));
-    process.env.AI_RATE_LIMIT_ROLE_ADMIN_PER_HOUR = "2";
+    process.env.AI_RATE_LIMITS = JSON.stringify({
+      roles: { admin: { perHour: 2 } },
+    });
 
     try {
       const context = { userId: "user-1", roles: ["admin"] };
@@ -135,7 +137,7 @@ describe("RedisRateLimitStore", () => {
         expect(blocked.window).toBe("hour");
       }
     } finally {
-      delete process.env.AI_RATE_LIMIT_ROLE_ADMIN_PER_HOUR;
+      delete process.env.AI_RATE_LIMITS;
     }
   });
 

@@ -1,26 +1,40 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   findUnlockingPlan,
   getModelMinTier,
   annotateModelLocks,
 } from "./model-access";
 
-describe("getModelMinTier", () => {
-  const rules = [{ provider: "US", model: "Claude 4", minTier: 2 }];
+const setTiers = (tiers: Record<string, number>) =>
+  vi.stubEnv("AI_MODEL_MIN_TIERS", JSON.stringify(tiers));
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
+describe("getModelMinTier", () => {
   it("returns the configured tier for the exact provider and model", () => {
-    expect(getModelMinTier(rules, { provider: "US", model: "Claude 4" })).toBe(
-      2,
-    );
+    setTiers({ "US/Claude 4": 2 });
+    expect(getModelMinTier({ provider: "US", model: "Claude 4" })).toBe(2);
   });
 
   it("is open (0) for unlisted models, including same name under another provider", () => {
-    expect(getModelMinTier(rules, { provider: "US", model: "ChatGPT 5" })).toBe(
-      0,
-    );
-    expect(
-      getModelMinTier(rules, { provider: "Next", model: "Claude 4" }),
-    ).toBe(0);
+    setTiers({ "US/Claude 4": 2 });
+    expect(getModelMinTier({ provider: "US", model: "ChatGPT 5" })).toBe(0);
+    expect(getModelMinTier({ provider: "Next", model: "Claude 4" })).toBe(0);
+  });
+
+  it("keeps Cyrillic model names apart", () => {
+    setTiers({ "Еней/Юрист Еней": 1 });
+    expect(getModelMinTier({ provider: "Еней", model: "Юрист Еней" })).toBe(1);
+    expect(getModelMinTier({ provider: "Еней", model: "Поет Еней" })).toBe(0);
+  });
+
+  it("throws on a negative tier instead of silently opening the model", () => {
+    setTiers({ "US/Claude 4": -1 });
+    expect(() =>
+      getModelMinTier({ provider: "US", model: "Claude 4" }),
+    ).toThrow(/AI_MODEL_MIN_TIERS is invalid/);
   });
 });
 
@@ -53,29 +67,23 @@ describe("annotateModelLocks", () => {
     { name: "Pro", tier: 2, active: true, price: "30" },
     { name: "Old", tier: 3, active: false, price: "5" },
   ];
-  const rules = [
-    { provider: "openai", model: "gpt-b", minTier: 2 },
-    { provider: "openai", model: "gone", minTier: 9 },
-  ];
 
   it("locks only models above the user's tier and names the cheapest unlocking plan", () => {
-    const [{ models }] = annotateModelLocks(providers, rules, 1, plans);
+    setTiers({ "openai/gpt-b": 2, "openai/gone": 9 });
+    const [{ models }] = annotateModelLocks(providers, 1, plans);
     expect(models[0]).toMatchObject({ locked: false, requiredPlanName: null });
     expect(models[1]).toMatchObject({ locked: true, requiredPlanName: "Pro" });
   });
 
   it("unlocks at exactly the required tier", () => {
-    const [{ models }] = annotateModelLocks(providers, rules, 2, plans);
+    setTiers({ "openai/gpt-b": 2 });
+    const [{ models }] = annotateModelLocks(providers, 2, plans);
     expect(models.every((m) => !m.locked)).toBe(true);
   });
 
   it("reports no unlocking plan when none qualifies", () => {
-    const [{ models }] = annotateModelLocks(
-      providers,
-      [{ provider: "openai", model: "gpt-a", minTier: 3 }],
-      0,
-      plans,
-    );
+    setTiers({ "openai/gpt-a": 3 });
+    const [{ models }] = annotateModelLocks(providers, 0, plans);
     expect(models[0]).toMatchObject({ locked: true, requiredPlanName: null });
   });
 });
