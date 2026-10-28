@@ -73,8 +73,18 @@ Setup:
    `checkout.session.completed`, `customer.subscription.updated`,
    `customer.subscription.deleted`; put its signing secret in
    `STRIPE_WEBHOOK_SECRET`.
-4. Enable the Stripe Billing Portal; "Manage billing" on `/pricing` uses it for
-   cancel / payment method changes.
+4. Enable the Stripe Billing Portal with subscription updates and
+   cancellation allowed. `/pricing` uses it for "Manage billing", for switching
+   an existing subscription to another plan, and for "Cancel subscription"
+   (Stripe's hosted cancel confirmation). "Resume subscription" undoes a
+   scheduled cancellation without leaving the app.
+
+`/pricing` shows one card per active plan, ordered by tier, plus a synthesized
+Free card unless an active tier-0 plan exists. Each card lists the models it
+newly unlocks (from `AI_MODEL_MIN_TIERS`), and the cheapest purchasable plan
+above the user's tier is marked Recommended. The user menu's first entry shows
+the current plan (`GET /api/user/plan`) with an Upgrade badge when a higher
+purchasable plan exists.
 
 Stripe customers are created on first checkout, never at sign-up. Deleting an
 account cancels its active subscriptions first.

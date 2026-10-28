@@ -1,32 +1,35 @@
 "use client";
 
-import type { PricingPlan, UserSubscriptionSummary } from "app-types/plan";
+import type {
+  PricingCard,
+  PricingView,
+  UserSubscriptionSummary,
+} from "app-types/plan";
 import { authClient } from "auth/client";
-import { formatPlanPrice } from "lib/plan/currency";
 import { cn } from "lib/utils";
-import { Check, Loader } from "lucide-react";
+import { Lock } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { mutate } from "swr";
 import { Badge } from "ui/badge";
-import { Button } from "ui/button";
+import { CancelSubscriptionDialog } from "./cancel-subscription-dialog";
+import { CurrentPlanPanel } from "./current-plan-panel";
+import { PlanCard } from "./plan-card";
 
 type Props = {
-  plans: PricingPlan[];
-  effectivePlan: {
-    code: string;
-    name: string;
-    source: "subscription" | "assigned";
-  } | null;
+  view: PricingView;
   subscription: UserSubscriptionSummary | null;
   billingEnabled: boolean;
   currency: string;
   checkoutSuccess: boolean;
 };
 
+const PLAN_SUMMARY_KEY = "/api/user/plan";
+
 export function PricingPlans({
-  plans,
-  effectivePlan,
+  view,
   subscription,
   billingEnabled,
   currency,
@@ -34,28 +37,37 @@ export function PricingPlans({
 }: Props) {
   const t = useTranslations("Pricing");
   const locale = useLocale();
+  const router = useRouter();
   const [annual, setAnnual] = useState(false);
+  // A card id, or "portal" | "cancel" | "restore".
   const [pending, setPending] = useState<string | null>(null);
-  const showAnnualToggle = plans.some((plan) => plan.hasAnnual);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const showAnnualToggle = view.cards.some((card) => card.hasAnnual);
+  const recommended = view.cards.find((card) => card.recommended);
+  const subscriptionId = subscription?.stripeSubscriptionId ?? undefined;
 
   useEffect(() => {
-    if (checkoutSuccess) toast.success(t("checkoutSuccess"));
+    if (!checkoutSuccess) return;
+    toast.success(t("checkoutSuccess"));
+    mutate(PLAN_SUMMARY_KEY);
   }, [checkoutSuccess, t]);
 
   const fail = () => {
     setPending(null);
-    toast.error(t("checkoutFailed"));
+    toast.error(t("actionFailed"));
   };
 
-  const subscribe = async (plan: PricingPlan) => {
-    setPending(plan.id);
+  const upgrade = async (card: PricingCard) => {
+    setPending(card.id);
     const { error } = await authClient.subscription.upgrade({
-      plan: plan.code,
-      annual: annual && plan.hasAnnual,
+      plan: card.code!,
+      annual: annual && card.hasAnnual,
       // Passing the current subscription switches plans instead of stacking a second one.
-      subscriptionId: subscription?.stripeSubscriptionId ?? undefined,
+      subscriptionId,
       successUrl: "/pricing?checkout=success",
       cancelUrl: "/pricing",
+      // Switching goes through the portal's update-confirm flow, which returns here.
+      returnUrl: "/pricing",
     });
     if (error) fail();
   };
@@ -68,123 +80,118 @@ export function PricingPlans({
     if (error) fail();
   };
 
+  const cancel = async () => {
+    setPending("cancel");
+    const { error } = await authClient.subscription.cancel({
+      subscriptionId,
+      returnUrl: "/pricing",
+    });
+    if (error) fail();
+  };
+
+  const restore = async () => {
+    setPending("restore");
+    const { error } = await authClient.subscription.restore({
+      subscriptionId,
+    });
+    if (error) return fail();
+    setPending(null);
+    toast.success(t("resumed"));
+    router.refresh();
+    mutate(PLAN_SUMMARY_KEY);
+  };
+
+  const gridColumns =
+    view.cards.length >= 4
+      ? "md:grid-cols-2 xl:grid-cols-4"
+      : view.cards.length === 3
+        ? "md:grid-cols-3"
+        : "md:grid-cols-2 max-w-3xl mx-auto";
+
   return (
-    <div className="w-full max-w-5xl mx-auto p-6 space-y-8">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
-        <p className="text-sm text-muted-foreground">{t("description")}</p>
-        {effectivePlan?.source === "assigned" && (
-          <p className="text-xs text-muted-foreground">
-            {t("assignedByAdmin")}: {effectivePlan.name}
-          </p>
-        )}
-        {subscription && (
-          <div className="flex flex-wrap items-center gap-3 pt-1">
-            {subscription.periodEnd && (
-              <span className="text-xs text-muted-foreground">
-                {t(subscription.cancelAtPeriodEnd ? "cancelsOn" : "renewsOn", {
-                  date: new Date(subscription.periodEnd).toLocaleDateString(
-                    locale,
-                  ),
-                })}
-              </span>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={manageBilling}
-              disabled={pending !== null}
-            >
-              {pending === "portal" && (
-                <Loader className="size-4 animate-spin" />
-              )}
-              {t("manageBilling")}
-            </Button>
-          </div>
-        )}
-        {!billingEnabled && (
-          <p className="text-xs text-muted-foreground">
-            {t("billingDisabled")}
-          </p>
-        )}
+    <div className="w-full max-w-6xl mx-auto px-6 py-10 space-y-10">
+      <div className="text-center space-y-3">
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+          {t("headline")}
+        </h1>
+        <p className="text-muted-foreground">{t("subheadline")}</p>
       </div>
 
+      <CurrentPlanPanel
+        current={view.current}
+        subscription={subscription}
+        billingEnabled={billingEnabled}
+        recommended={recommended}
+        pending={pending}
+        onManageBilling={manageBilling}
+        onCancel={() => setCancelOpen(true)}
+        onRestore={restore}
+        onUpgrade={upgrade}
+      />
+
       {showAnnualToggle && (
-        <div className="inline-flex rounded-lg border p-1 text-sm">
-          {[false, true].map((isAnnual) => (
-            <button
-              key={String(isAnnual)}
-              type="button"
-              onClick={() => setAnnual(isAnnual)}
-              className={cn(
-                "rounded-md px-3 py-1 transition-colors",
-                annual === isAnnual
-                  ? "bg-secondary text-secondary-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {t(isAnnual ? "annual" : "monthly")}
-            </button>
-          ))}
+        <div className="flex justify-center">
+          <div className="inline-flex items-center rounded-lg border p-1 text-sm">
+            {[false, true].map((isAnnual) => (
+              <button
+                key={String(isAnnual)}
+                type="button"
+                onClick={() => setAnnual(isAnnual)}
+                className={cn(
+                  "flex items-center gap-2 rounded-md px-3 py-1 transition-colors",
+                  annual === isAnnual
+                    ? "bg-secondary text-secondary-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {t(isAnnual ? "annual" : "monthly")}
+                {isAnnual && view.annualSavingsPercent !== null && (
+                  <Badge variant="secondary">
+                    {t("saveUpTo", { percent: view.annualSavingsPercent })}
+                  </Badge>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {plans.map((plan) => {
-          const isCurrent = effectivePlan?.code === plan.code;
-          const useAnnual = annual && plan.hasAnnual && plan.annualPrice;
-          const price = useAnnual ? plan.annualPrice! : plan.price;
-          return (
-            <div
-              key={plan.id}
-              data-testid={`pricing-plan-${plan.code}`}
-              className={cn(
-                "flex flex-col gap-4 rounded-xl border p-5",
-                isCurrent && "border-primary",
-              )}
-            >
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold">{plan.name}</h2>
-                  {isCurrent && <Badge>{t("currentPlan")}</Badge>}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {plan.shortDescription}
-                </p>
-              </div>
-              <p className="text-3xl font-semibold tracking-tight">
-                {formatPlanPrice(price, currency, locale)}
-                <span className="ml-1 text-sm font-normal text-muted-foreground">
-                  {useAnnual ? t("perYear") : t("perMonth")}
-                </span>
-              </p>
-              <ul className="flex-1 space-y-2 text-sm">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-2">
-                    <Check className="mt-0.5 size-4 shrink-0 text-primary" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              {isCurrent ? null : plan.purchasable && billingEnabled ? (
-                <Button
-                  onClick={() => subscribe(plan)}
-                  disabled={pending !== null}
-                >
-                  {pending === plan.id && (
-                    <Loader className="size-4 animate-spin" />
-                  )}
-                  {subscription ? t("switchPlan") : t("subscribe")}
-                </Button>
-              ) : (
-                <span className="text-xs text-muted-foreground">
-                  {t("notPurchasable")}
-                </span>
-              )}
-            </div>
-          );
-        })}
+      <div className={cn("grid gap-6 items-stretch", gridColumns)}>
+        {view.cards.map((card) => (
+          <PlanCard
+            key={card.id}
+            card={card}
+            annual={annual}
+            currency={currency}
+            locale={locale}
+            pending={pending}
+            onUpgrade={upgrade}
+            onCancel={() => setCancelOpen(true)}
+          />
+        ))}
       </div>
+
+      <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+        {billingEnabled ? (
+          <>
+            <Lock className="size-3" />
+            {t("securePayments")}
+          </>
+        ) : (
+          t("billingDisabled")
+        )}
+      </p>
+
+      <CancelSubscriptionDialog
+        open={cancelOpen}
+        onOpenChange={setCancelOpen}
+        onConfirm={cancel}
+        pending={pending}
+        planName={view.current.name}
+        periodEnd={subscription?.periodEnd ?? null}
+        targetName={view.cancelTargetName}
+        losesModels={view.cancelLosesModels}
+      />
     </div>
   );
 }
