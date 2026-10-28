@@ -328,7 +328,32 @@
     "modelLockedTitle": "Ця модель потребує вищого тарифу",
     "modelLockedDescription": "{model} доступна на тарифі {plan} і вище.",
     "modelLockedUnavailable": "{model} зараз недоступна на жодному тарифі.",
-    "seePlans": "Переглянути тарифи"
+    "seePlans": "Переглянути тарифи",
+    "Banner": {
+      "gotIt": "Зрозуміло"
+    },
+    "rateLimitedHourlyTitle": "{limit, plural, =1 {Ви використали своє # повідомлення на цю годину} one {Ви використали всі # повідомлення на цю годину} few {Ви використали всі # повідомлення на цю годину} other {Ви використали всі # повідомлень на цю годину}}",
+    "rateLimitedDailyTitle": "{limit, plural, =1 {Ви використали своє # повідомлення на сьогодні} one {Ви використали всі # повідомлення на сьогодні} few {Ви використали всі # повідомлення на сьогодні} other {Ви використали всі # повідомлень на сьогодні}}",
+    "rateLimitedUpsell": "Перейдіть на {plan}, щоб продовжити просто зараз.",
+    "rateLimitedRetryAfter": "Спробуйте знову через {minutes} хв",
+    "rateLimitedSupport": "Потрібно більше? Зверніться до адміністратора.",
+    "threadLimitReachedTitle": "{limit, plural, one {Цей чат досяг ліміту в # повідомлення} few {Цей чат досяг ліміту в # повідомлення} other {Цей чат досяг ліміту в # повідомлень}}",
+    "threadLimitReachedDescription": "Почніть новий чат, щоб продовжити. Попередні повідомлення залишаться тут.",
+    "threadLimitUpsell": "Почніть новий чат або перейдіть на {plan} для довших розмов.",
+    "threadLimitNewChat": "Новий чат",
+    "threadLimitKeepsContextSharp": "У коротших чатах відповіді точніші.",
+    "threadLimitWarningTitle": "{remaining, plural, one {У цьому чаті залишилося # повідомлення} few {У цьому чаті залишилося # повідомлення} other {У цьому чаті залишилося # повідомлень}}",
+    "threadLimitWarningDescription": "Цей чат обмежено {limit} повідомленнями. Коли дійдете до ліміту, почніть новий.",
+    "threadLimitWarningUpsell": "Невдовзі почніть новий чат або перейдіть на {plan} для довших розмов.",
+    "upgradeTo": "Перейти на {plan}",
+    "checkoutFailed": "Не вдалося відкрити оплату. Спробуйте ще раз.",
+    "offerPerHour": "До {limit} повідомлень на годину",
+    "offerPerDay": "До {limit} повідомлень на день",
+    "offerPerChat": "До {limit} повідомлень в одному чаті",
+    "offerNoHourlyLimit": "Без погодинного ліміту",
+    "offerNoDailyLimit": "Без денного ліміту",
+    "offerNoChatLimit": "Без ліміту довжини чату",
+    "offerUnlocksModel": "Відкриває {model} та інше"
   },
   "Layout": {
     "workflow": "Workflow",
