@@ -18,7 +18,11 @@ import globalLogger from "logger";
 
 import { colorize } from "consola/utils";
 import { buildModelLockedMessage } from "lib/plan/model-locked-message";
-import { checkModelAccess, getEffectivePlan } from "lib/plan/server";
+import {
+  checkModelAccess,
+  getEffectivePlan,
+  getLimitOffer,
+} from "lib/plan/server";
 
 const logger = globalLogger.withDefaults({
   message: colorize("blackBright", `Temporary Chat API: `),
@@ -50,21 +54,27 @@ export async function POST(request: Request) {
       return new Response(
         buildModelLockedMessage({
           model: resolvedModel.identity.model,
-          requiredPlanName: access.requiredPlanName,
+          requiredPlan: access.requiredPlan,
         }),
         { status: 403 },
       );
     }
     const rateLimiter = getAiRateLimiter();
     if (isUserMessage && rateLimiter) {
+      const roles = parseRoles((session.user as { role?: string }).role);
       const rateLimitResult = await rateLimiter.check({
         userId: session.user.id,
-        roles: parseRoles((session.user as { role?: string }).role),
+        roles,
         planCode: effectivePlan?.code ?? null,
         model: resolvedModel.identity,
       });
       if (!rateLimitResult.ok) {
-        const message = buildRateLimitMessage(rateLimitResult);
+        const offer = await getLimitOffer(
+          { plan: effectivePlan, roles, model: resolvedModel.identity },
+          rateLimitResult.window,
+          rateLimitResult.limit,
+        );
+        const message = buildRateLimitMessage({ ...rateLimitResult, offer });
         return new Response(message, {
           status: 429,
           headers: { "Retry-After": `${rateLimitResult.retryAfterSeconds}` },

@@ -261,7 +261,7 @@ export const ErrorMessage = ({
   const modelLocked = parseModelLockedMessage(error.message);
 
   if (modelLocked) return <ModelLockedNotice payload={modelLocked} />;
-  if (threadLimit) return <ThreadLimitNotice limit={threadLimit} />;
+  if (threadLimit) return <ThreadLimitNotice payload={threadLimit} />;
   if (parsedRateLimit) return <RateLimitNotice payload={parsedRateLimit} />;
 
   return (

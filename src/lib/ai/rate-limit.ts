@@ -2,11 +2,11 @@ import logger from "logger";
 import { getRedisClient } from "lib/redis";
 import { modelConfigKey, readJsonEnv } from "lib/env-json";
 import { z } from "zod";
-import { RateLimitMessagePayload } from "./rate-limit-message";
+import type { RateLimitMessagePayload } from "./rate-limit-message";
 
 export type RateLimitCheckResult =
   | { ok: true }
-  | ({ ok: false } & RateLimitMessagePayload);
+  | ({ ok: false } & Omit<RateLimitMessagePayload, "offer">);
 
 export type RateLimitWindow = "hour" | "day";
 export type RateLimitScope = "role" | "plan" | "model";
@@ -104,6 +104,12 @@ const resolveWinningScope = (
     if (limit === undefined || (best && limit <= best.limit)) return best;
     return { scope, identity: value, limit };
   }, undefined);
+
+/** The request limit for one window, `undefined` when nothing caps it. */
+export const getWindowLimit = (
+  context: Pick<AiRateLimitContext, "roles" | "planCode" | "model">,
+  window: RateLimitWindow,
+) => resolveWinningScope(context, window)?.limit;
 
 /**
  * Longest persistent thread the user may extend, in user messages. Role, plan

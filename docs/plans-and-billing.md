@@ -45,7 +45,7 @@ Enforcement is server-side and fail-closed:
 
 | Surface | Behaviour when locked |
 | --- | --- |
-| `POST /api/chat`, `/api/chat/temporary`, `/api/chat/title`, `/api/agent/ai` | `403`, body `AI_MODEL_LOCKED\|<model>\|<plan name>` |
+| `POST /api/chat`, `/api/chat/temporary`, `/api/chat/title`, `/api/agent/ai` | `403`, body `AI_MODEL_LOCKED\|<model>[\|<plan code>\|<plan name>\|<purchasable 1/0>]` |
 | Server actions `generateObjectAction`, `generateExampleToolSchemaAction` | throws `ModelLockedError` |
 | Workflow LLM nodes and tool-parameter generation | throws, node fails |
 | `GET /api/chat/models` | every model returned with `locked` + `requiredPlanName`; picker shows a lock and links to `/pricing` |
@@ -54,6 +54,24 @@ The model is resolved first (`customModelProvider.resolveModel`), so an unknown
 model name is judged as the fallback model that would actually serve it.
 `requiredPlanName` is the cheapest active plan whose tier meets the model's
 minimum tier; `null` means no active plan unlocks it.
+
+## Upgrade offers on limits
+
+When a request hits a limit, the chat proposes the next plan instead of a dead
+end. `getLimitOffer` (`src/lib/plan/server.ts`) picks the cheapest active plan
+above the user's tier whose `AI_RATE_LIMITS` value for that limit (hourly, daily
+or chat length) is higher, or unset, which lifts it. A plan with a Stripe price
+is preferred. The offer is appended to the error body as
+`<plan code>|<plan name>|<purchasable 1/0>|<new limit or empty>`:
+
+- `429 AI_RATE_LIMIT|<window>|<retry s>|<limit>[|offer]`
+- `429 AI_THREAD_LIMIT|<limit>[|offer]`, and the near-limit
+  `data-thread-limit-warning` stream part carries the same offer
+
+The notice shows the plan and what it changes. Purchasable plans get an
+"Upgrade to …" button that goes straight to Stripe checkout (or the portal's
+switch flow for subscribers); other plans link to `/pricing`. No offer means no
+higher plan helps, and the notice falls back to "ask your admin".
 
 ## Stripe
 

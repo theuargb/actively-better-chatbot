@@ -61,10 +61,18 @@ import { ImageToolName } from "lib/ai/tools";
 import { buildCsvIngestionPreviewParts } from "@/lib/ai/ingest/csv-ingest";
 import { serverFileStorage } from "lib/file-storage";
 import { getAiRateLimiter, getMaxChatLength } from "lib/ai/rate-limit";
-import { buildRateLimitMessage } from "lib/ai/rate-limit-message";
+import {
+  buildRateLimitMessage,
+  buildThreadLimitMessage,
+} from "lib/ai/rate-limit-message";
 import { parseRoles } from "lib/ai/rate-limit-context";
 import { buildModelLockedMessage } from "lib/plan/model-locked-message";
-import { checkModelAccess, getEffectivePlan } from "lib/plan/server";
+import {
+  checkModelAccess,
+  getEffectivePlan,
+  getLimitOffer,
+} from "lib/plan/server";
+import type { LimitOffer } from "lib/plan/upgrade-offer";
 
 const logger = globalLogger.withDefaults({
   message: colorize("blackBright", `Chat API: `),
@@ -147,7 +155,7 @@ export async function POST(request: Request) {
       return new Response(
         buildModelLockedMessage({
           model: resolvedModel.identity.model,
-          requiredPlanName: access.requiredPlanName,
+          requiredPlan: access.requiredPlan,
         }),
         { status: 403 },
       );
@@ -162,7 +170,12 @@ export async function POST(request: Request) {
         model: resolvedModel.identity,
       });
       if (!rateLimitResult.ok) {
-        const message = buildRateLimitMessage(rateLimitResult);
+        const offer = await getLimitOffer(
+          { plan: effectivePlan, roles, model: resolvedModel.identity },
+          rateLimitResult.window,
+          rateLimitResult.limit,
+        );
+        const message = buildRateLimitMessage({ ...rateLimitResult, offer });
         return new Response(message, {
           status: 429,
           headers: { "Retry-After": `${rateLimitResult.retryAfterSeconds}` },
@@ -185,7 +198,9 @@ export async function POST(request: Request) {
       return new Response("Forbidden", { status: 403 });
     }
 
-    let threadLimitWarning: { limit: number; remaining: number } | undefined;
+    let threadLimitWarning:
+      | { limit: number; remaining: number; offer: LimitOffer | null }
+      | undefined;
     if (isUserMessage) {
       const maxChatLength = getMaxChatLength({
         roles,
@@ -195,14 +210,25 @@ export async function POST(request: Request) {
       if (maxChatLength) {
         const userMessageCount =
           await chatRepository.countUserMessagesByThreadId(thread!.id);
-        if (userMessageCount >= maxChatLength) {
-          return new Response(`AI_THREAD_LIMIT|${maxChatLength}`, {
-            status: 429,
-          });
-        }
         const remaining = maxChatLength - userMessageCount - 1;
-        if (remaining <= Math.ceil(maxChatLength * 0.1)) {
-          threadLimitWarning = { limit: maxChatLength, remaining };
+        const atLimit = userMessageCount >= maxChatLength;
+        const nearLimit = remaining <= Math.ceil(maxChatLength * 0.1);
+        const offer =
+          atLimit || nearLimit
+            ? await getLimitOffer(
+                { plan: effectivePlan, roles, model: resolvedModel.identity },
+                "thread",
+                maxChatLength,
+              )
+            : null;
+        if (atLimit) {
+          return new Response(
+            buildThreadLimitMessage({ limit: maxChatLength, offer }),
+            { status: 429 },
+          );
+        }
+        if (nearLimit) {
+          threadLimitWarning = { limit: maxChatLength, remaining, offer };
         }
       }
     }
