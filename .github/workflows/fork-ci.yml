@@ -1,0 +1,38 @@
+name: Fork CI
+
+# Upstream workflows only watch `main`. These branches are where the fork
+# integrates (`trunk`) and deploys (`semantyka`), see docs/fork-workflow.md.
+on:
+  pull_request:
+    branches: [trunk, semantyka]
+  push:
+    branches: [trunk, semantyka]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm lint
+      - run: pnpm check-types
+      - run: pnpm test
+
+      - name: Check migrations
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            pnpm tsx scripts/check-migrations.ts --base "origin/${{ github.base_ref }}"
+          else
+            pnpm tsx scripts/check-migrations.ts
+          fi

@@ -52,4 +52,14 @@ describe("customModelProvider.resolveModel", () => {
       );
     }
   });
+
+  it("has a fallback identity that exists in the registry", () => {
+    const provider = customModelProvider.modelsInfo.find(
+      (p) => p.provider === FALLBACK_MODEL_IDENTITY.provider,
+    );
+    expect(
+      provider?.models.some((m) => m.name === FALLBACK_MODEL_IDENTITY.model),
+    ).toBe(true);
+    expect(customModelProvider.getModel(undefined)).toBeDefined();
+  });
 });
