@@ -5,11 +5,18 @@ import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-export default async function PricingPage() {
+export default async function PricingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ checkout?: string }>;
+}) {
   const session = await getSession();
   if (!session) redirect("/sign-in");
 
-  const data = await getPricingPageData(session.user.id);
+  const [data, { checkout }] = await Promise.all([
+    getPricingPageData(session.user.id),
+    searchParams,
+  ]);
 
-  return <PricingPlans {...data} />;
+  return <PricingPlans {...data} checkoutSuccess={checkout === "success"} />;
 }

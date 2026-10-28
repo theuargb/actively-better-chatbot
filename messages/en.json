@@ -744,13 +744,12 @@
     "subscribe": "Subscribe",
     "switchPlan": "Switch to this plan",
     "manageBilling": "Manage billing",
-    "resume": "Resume subscription",
     "cancelsOn": "Cancels on {date}",
     "renewsOn": "Renews on {date}",
     "notPurchasable": "Available on request",
     "assignedByAdmin": "Assigned by an administrator",
     "billingDisabled": "Online payments are not available yet.",
-    "checkoutSuccess": "Your subscription is active.",
+    "checkoutSuccess": "Payment received. Your plan will update in a few seconds.",
     "checkoutFailed": "Couldn't start checkout. Please try again."
   },
   "Admin": {
