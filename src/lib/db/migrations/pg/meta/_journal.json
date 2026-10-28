@@ -148,6 +148,13 @@
       "when": 1786216440851,
       "tag": "0020_careless_madame_hydra",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1793193256356,
+      "tag": "0021_legal_yellowjacket",
+      "breakpoints": true
     }
   ]
 }
