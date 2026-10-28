@@ -10,6 +10,7 @@ const plan = (code: string, tier: number): Plan => ({
   description: "",
   features: [],
   price: "10.00",
+  currency: "USD",
   annualPrice: null,
   tier,
   stripePriceId: null,

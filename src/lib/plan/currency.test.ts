@@ -1,49 +1,18 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  DEFAULT_PLAN_CURRENCY,
-  formatPlanPrice,
-  fromStripeAmount,
-  getPlanCurrency,
-} from "./currency";
-
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
-
-describe("getPlanCurrency", () => {
-  it("returns the configured code", () => {
-    vi.stubEnv("PLAN_CURRENCY", "EUR");
-    expect(getPlanCurrency()).toBe("EUR");
-  });
-
-  it("normalizes case and surrounding whitespace", () => {
-    vi.stubEnv("PLAN_CURRENCY", "  usd ");
-    expect(getPlanCurrency()).toBe("USD");
-  });
-
-  it("falls back to USD when unset", () => {
-    vi.stubEnv("PLAN_CURRENCY", "");
-    expect(getPlanCurrency()).toBe(DEFAULT_PLAN_CURRENCY);
-  });
-
-  it("falls back to USD when the value is only whitespace", () => {
-    vi.stubEnv("PLAN_CURRENCY", "   ");
-    expect(getPlanCurrency()).toBe("USD");
-  });
-
-  it("rejects codes that are not ISO 4217 shaped", () => {
-    vi.stubEnv("PLAN_CURRENCY", "DOLLARS");
-    expect(() => getPlanCurrency()).toThrow(/3-letter ISO 4217/);
-  });
-});
+import { describe, expect, it } from "vitest";
+import { formatPlanPrice, fromStripeAmount } from "./currency";
 
 describe("formatPlanPrice", () => {
-  it("formats a decimal string as currency", () => {
-    expect(formatPlanPrice("19.00", "USD", "en-US")).toBe("$19.00");
+  it("drops decimals from whole amounts", () => {
+    expect(formatPlanPrice("19.00", "USD", "en-US")).toBe("$19");
+    expect(formatPlanPrice(0, "USD", "en-US")).toBe("$0");
   });
 
-  it("accepts numbers as well as strings", () => {
-    expect(formatPlanPrice(0, "USD", "en-US")).toBe("$0.00");
+  it("keeps cents when the amount has them", () => {
+    expect(formatPlanPrice(100 / 12, "USD", "en-US")).toBe("$8.33");
+  });
+
+  it("uses the narrow local symbol", () => {
+    expect(formatPlanPrice("599", "UAH", "uk")).toMatch(/^599\s₴$/);
   });
 
   it("falls back to a plain rendering for unknown codes", () => {

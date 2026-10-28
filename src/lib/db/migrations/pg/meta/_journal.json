@@ -162,6 +162,13 @@
       "when": 1793197153465,
       "tag": "0022_mixed_menace",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793213858818,
+      "tag": "0023_many_professor_monster",
+      "breakpoints": true
     }
   ]
 }

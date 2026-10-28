@@ -41,8 +41,9 @@ const parseFeatures = (features: string) =>
   );
 
 /**
- * A plan sold through Stripe takes its price from Stripe, so what we display can
- * never differ from what Checkout charges. Throws a message an admin can act on.
+ * A plan sold through Stripe takes its price and currency from Stripe, so what
+ * we display can never differ from what Checkout charges. Throws a message an
+ * admin can act on.
  */
 const toPlanValues = async (data: {
   code: string;
@@ -51,6 +52,7 @@ const toPlanValues = async (data: {
   description: string;
   features: string;
   price: number;
+  currency: string;
   tier: number;
   stripePriceId: string | null;
   stripeAnnualPriceId: string | null;
@@ -62,14 +64,20 @@ const toPlanValues = async (data: {
   const annual = data.stripeAnnualPriceId
     ? await resolveStripePrice(data.stripeAnnualPriceId, "year")
     : null;
+  if (monthly && annual && annual.currency !== monthly.currency) {
+    throw new Error(
+      `Annual price is in ${annual.currency}, but the monthly price is in ${monthly.currency}`,
+    );
+  }
   return {
     code: data.code.toLowerCase(),
     name: data.name,
     shortDescription: data.shortDescription,
     description: data.description,
     features: parseFeatures(data.features),
-    price: monthly ?? data.price.toFixed(2),
-    annualPrice: annual,
+    price: monthly?.amount ?? data.price.toFixed(2),
+    currency: monthly?.currency ?? data.currency,
+    annualPrice: annual?.amount ?? null,
     tier: data.tier,
     stripePriceId: data.stripePriceId,
     stripeAnnualPriceId: data.stripeAnnualPriceId,

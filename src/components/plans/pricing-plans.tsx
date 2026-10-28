@@ -7,7 +7,7 @@ import type {
 } from "app-types/plan";
 import { authClient } from "auth/client";
 import { cn } from "lib/utils";
-import { Lock } from "lucide-react";
+import { Lock, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -22,17 +22,23 @@ type Props = {
   view: PricingView;
   subscription: UserSubscriptionSummary | null;
   billingEnabled: boolean;
-  currency: string;
   checkoutSuccess: boolean;
 };
 
 const PLAN_SUMMARY_KEY = "/api/user/plan";
 
+/** Banner art by card position: cheapest first, the last image repeats. */
+const PLAN_ART = [
+  "/pricing/tier-0.webp",
+  "/pricing/tier-1.webp",
+  "/pricing/tier-2.webp",
+  "/pricing/tier-3.webp",
+];
+
 export function PricingPlans({
   view,
   subscription,
   billingEnabled,
-  currency,
   checkoutSuccess,
 }: Props) {
   const t = useTranslations("Pricing");
@@ -105,93 +111,111 @@ export function PricingPlans({
     view.cards.length >= 4
       ? "md:grid-cols-2 xl:grid-cols-4"
       : view.cards.length === 3
-        ? "md:grid-cols-3"
+        ? "md:grid-cols-3 max-w-6xl mx-auto"
         : "md:grid-cols-2 max-w-3xl mx-auto";
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-6 py-10 space-y-10">
-      <div className="text-center space-y-3">
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-          {t("headline")}
-        </h1>
-        <p className="text-muted-foreground">{t("subheadline")}</p>
+    <div className="relative isolate w-full overflow-hidden">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[560px]"
+      >
+        <div className="absolute -top-32 left-[10%] size-[420px] rounded-full bg-violet-500/30 blur-3xl motion-safe:animate-[pricing-aurora_18s_ease-in-out_infinite]" />
+        <div className="absolute -top-20 right-[8%] size-[380px] rounded-full bg-fuchsia-500/25 blur-3xl motion-safe:animate-[pricing-aurora_22s_ease-in-out_infinite_reverse]" />
+        <div className="absolute top-24 left-1/2 size-[340px] -translate-x-1/2 rounded-full bg-amber-400/20 blur-3xl motion-safe:animate-[pricing-aurora_26s_ease-in-out_infinite]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background" />
       </div>
 
-      <CurrentPlanPanel
-        current={view.current}
-        subscription={subscription}
-        billingEnabled={billingEnabled}
-        recommended={recommended}
-        pending={pending}
-        onManageBilling={manageBilling}
-        onCancel={() => setCancelOpen(true)}
-        onRestore={restore}
-        onUpgrade={upgrade}
-      />
-
-      {showAnnualToggle && (
-        <div className="flex justify-center">
-          <div className="inline-flex items-center rounded-lg border p-1 text-sm">
-            {[false, true].map((isAnnual) => (
-              <button
-                key={String(isAnnual)}
-                type="button"
-                onClick={() => setAnnual(isAnnual)}
-                className={cn(
-                  "flex items-center gap-2 rounded-md px-3 py-1 transition-colors",
-                  annual === isAnnual
-                    ? "bg-secondary text-secondary-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {t(isAnnual ? "annual" : "monthly")}
-                {isAnnual && view.annualSavingsPercent !== null && (
-                  <Badge variant="secondary">
-                    {t("saveUpTo", { percent: view.annualSavingsPercent })}
-                  </Badge>
-                )}
-              </button>
-            ))}
-          </div>
+      <div className="mx-auto w-full max-w-7xl space-y-10 px-6 py-12">
+        <div className="mx-auto max-w-3xl space-y-4 text-center">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-fuchsia-500/30 bg-background/60 px-3 py-1 text-xs font-medium text-fuchsia-600 backdrop-blur dark:text-fuchsia-300">
+            <Sparkles className="size-3.5" />
+            {t("eyebrow")}
+          </span>
+          <h1 className="bg-[linear-gradient(110deg,#7c3aed,#db2777,#f59e0b,#7c3aed)] bg-[length:250%_100%] bg-clip-text pb-1 text-4xl font-bold tracking-tight text-transparent md:text-6xl motion-safe:animate-[pricing-gradient-pan_10s_ease-in-out_infinite]">
+            {t("headline")}
+          </h1>
+          <p className="text-base text-muted-foreground md:text-lg">
+            {t("subheadline")}
+          </p>
         </div>
-      )}
 
-      <div className={cn("grid gap-6 items-stretch", gridColumns)}>
-        {view.cards.map((card) => (
-          <PlanCard
-            key={card.id}
-            card={card}
-            annual={annual}
-            currency={currency}
-            locale={locale}
-            pending={pending}
-            onUpgrade={upgrade}
-            onCancel={() => setCancelOpen(true)}
-          />
-        ))}
-      </div>
+        <CurrentPlanPanel
+          current={view.current}
+          subscription={subscription}
+          billingEnabled={billingEnabled}
+          recommended={recommended}
+          pending={pending}
+          onManageBilling={manageBilling}
+          onCancel={() => setCancelOpen(true)}
+          onRestore={restore}
+          onUpgrade={upgrade}
+        />
 
-      <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-        {billingEnabled ? (
-          <>
-            <Lock className="size-3" />
-            {t("securePayments")}
-          </>
-        ) : (
-          t("billingDisabled")
+        {showAnnualToggle && (
+          <div className="flex justify-center">
+            <div className="inline-flex items-center rounded-full border bg-background/70 p-1 text-sm shadow-sm backdrop-blur">
+              {[false, true].map((isAnnual) => (
+                <button
+                  key={String(isAnnual)}
+                  type="button"
+                  onClick={() => setAnnual(isAnnual)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-full px-4 py-1.5 transition-colors",
+                    annual === isAnnual
+                      ? "bg-secondary text-secondary-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {t(isAnnual ? "annual" : "monthly")}
+                  {isAnnual && view.annualSavingsPercent !== null && (
+                    <Badge className="border-0 bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white">
+                      {t("saveUpTo", { percent: view.annualSavingsPercent })}
+                    </Badge>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
-      </p>
 
-      <CancelSubscriptionDialog
-        open={cancelOpen}
-        onOpenChange={setCancelOpen}
-        onConfirm={cancel}
-        pending={pending}
-        planName={view.current.name}
-        periodEnd={subscription?.periodEnd ?? null}
-        targetName={view.cancelTargetName}
-        losesModels={view.cancelLosesModels}
-      />
+        <div className={cn("grid items-stretch gap-6 pt-3", gridColumns)}>
+          {view.cards.map((card, index) => (
+            <PlanCard
+              key={card.id}
+              card={card}
+              art={PLAN_ART[Math.min(index, PLAN_ART.length - 1)]}
+              annual={annual}
+              locale={locale}
+              pending={pending}
+              onUpgrade={upgrade}
+              onCancel={() => setCancelOpen(true)}
+            />
+          ))}
+        </div>
+
+        <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+          {billingEnabled ? (
+            <>
+              <Lock className="size-3" />
+              {t("securePayments")}
+            </>
+          ) : (
+            t("billingDisabled")
+          )}
+        </p>
+
+        <CancelSubscriptionDialog
+          open={cancelOpen}
+          onOpenChange={setCancelOpen}
+          onConfirm={cancel}
+          pending={pending}
+          planName={view.current.name}
+          periodEnd={subscription?.periodEnd ?? null}
+          targetName={view.cancelTargetName}
+          losesModels={view.cancelLosesModels}
+        />
+      </div>
     </div>
   );
 }

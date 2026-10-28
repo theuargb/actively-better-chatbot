@@ -19,6 +19,7 @@ const plan = (
   description: "",
   features: [],
   price: "10.00",
+  currency: "USD",
   annualPrice: null,
   stripePriceId: null,
   stripeAnnualPriceId: null,
@@ -110,6 +111,17 @@ describe("buildPricingView", () => {
 
     expect(view.cards.map((c) => c.id)).toEqual(["basic", "plus"]);
     expect(card(view, "plus").includesName).toBe("Basic");
+  });
+
+  it("prices the synthesized Free card in the plans' currency", () => {
+    const view = build({
+      plans: [
+        { ...pro, currency: "EUR" },
+        { ...plus, currency: "UAH" },
+      ],
+    });
+    expect(card(view, FREE_CARD_ID).currency).toBe("UAH");
+    expect(card(view, "pro").currency).toBe("EUR");
   });
 
   it("drops inactive plans", () => {
