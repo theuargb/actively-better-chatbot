@@ -385,7 +385,8 @@
     "showLessChats": "Показати менше",
     "reportAnIssue": "Report an issue",
     "joinCommunity": "Join Community",
-    "plansAndBilling": "Тарифи та оплата"
+    "plansAndBilling": "Тарифи та оплата",
+    "upgrade": "Підвищити"
   },
   "Archive": {
     "title": "Папки",
@@ -748,9 +749,6 @@
       "failedToUpdateRole": "Failed to update role",
       "cannotUpdateOwnRole": "You cannot update your own role",
       "roleUpdatedSuccessfullyTo": "User role updated successfully to {role}"
-    },
-    "Models": {
-      "title": "Доступ до моделей"
     }
   },
   "MCP": {
@@ -806,21 +804,44 @@
   },
   "Pricing": {
     "title": "Тарифи та оплата",
-    "description": "Оберіть тариф, який відповідає тому, як ви користуєтесь асистентом.",
+    "headline": "Відкрийте більше можливостей асистента",
+    "subheadline": "Потужніші моделі та вищі ліміти. Підвищуйте, змінюйте чи скасовуйте тариф будь-коли.",
+    "yourPlan": "Ваш тариф",
+    "freePlanName": "Безкоштовний",
+    "freePlanDescription": "Усе необхідне — безкоштовно назавжди.",
+    "freeStatus": "Ви на безкоштовному тарифі.",
+    "assignedByAdmin": "Призначено адміністратором",
+    "renewsOn": "Поновиться {date}",
+    "endsOn": "Завершиться {date}",
     "monthly": "Щомісяця",
     "annual": "Щороку",
+    "saveUpTo": "Заощаджуйте до {percent}%",
     "perMonth": "/ міс.",
-    "perYear": "/ рік",
+    "billedAnnually": "{price} при оплаті за рік",
+    "freeForever": "Безкоштовно назавжди",
+    "recommended": "Рекомендовано",
     "currentPlan": "Поточний тариф",
-    "subscribe": "Підписатися",
-    "switchPlan": "Перейти на цей тариф",
+    "upgradeTo": "Перейти на {plan}",
+    "switchTo": "Змінити на {plan}",
+    "downgradeTo": "Перейти на {plan}",
+    "availableOnRequest": "Доступно за запитом",
+    "includedInYourPlan": "Входить у ваш тариф",
+    "everythingIn": "Усе з {plan}, а також:",
+    "modelsHeading": "Моделі",
+    "moreModels": "ще {count}",
     "manageBilling": "Керування оплатою",
-    "cancelsOn": "Скасується {date}",
-    "renewsOn": "Поновиться {date}",
-    "notPurchasable": "Доступно за запитом",
-    "assignedByAdmin": "Призначено адміністратором",
+    "cancelSubscription": "Скасувати підписку",
+    "resumeSubscription": "Відновити підписку",
+    "resumed": "Підписку буде продовжено.",
+    "cancelTitle": "Скасувати {plan}?",
+    "cancelDescription": "{plan} залишиться у вас до {date}. Після цього ви перейдете на {target}.",
+    "cancelDescriptionNoDate": "{plan} залишиться у вас до кінця оплаченого періоду. Після цього ви перейдете на {target}.",
+    "cancelLoses": "Ви втратите доступ до:",
+    "keepPlan": "Залишити тариф",
+    "confirmCancel": "Продовжити скасування",
+    "securePayments": "Безпечна оплата через Stripe. Скасування будь-коли.",
     "billingDisabled": "Онлайн-оплата поки недоступна.",
     "checkoutSuccess": "Оплату отримано. Тариф оновиться за кілька секунд.",
-    "checkoutFailed": "Не вдалося розпочати оплату. Спробуйте ще раз."
+    "actionFailed": "Щось пішло не так. Спробуйте ще раз."
   }
 }
