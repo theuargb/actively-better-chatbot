@@ -9,7 +9,6 @@ import { cn } from "lib/utils";
 import { Gem, Loader, Sparkles } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Button } from "ui/button";
-import { GlowButton } from "./glow-button";
 
 export function CurrentPlanPanel({
   current,
@@ -113,14 +112,18 @@ export function CurrentPlanPanel({
             </>
           )}
           {!subscription && recommended && (
-            <GlowButton onClick={() => onUpgrade(recommended)} disabled={busy}>
+            <Button
+              variant="outline"
+              onClick={() => onUpgrade(recommended)}
+              disabled={busy}
+            >
               {pending === recommended.id ? (
                 <Loader className="size-4 animate-spin" />
               ) : (
                 <Sparkles className="size-4" />
               )}
               {t("upgradeTo", { plan: recommended.name })}
-            </GlowButton>
+            </Button>
           )}
         </div>
       )}

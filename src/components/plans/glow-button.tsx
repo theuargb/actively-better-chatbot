@@ -4,7 +4,7 @@ import { cn } from "lib/utils";
 import type { ComponentProps } from "react";
 import { Button } from "ui/button";
 
-/** The pricing page's primary call to action: animated gradient with a light sweep. */
+/** The pricing page's primary call to action: gradient fill, light sweep on hover. */
 export function GlowButton({
   className,
   children,
@@ -13,9 +13,8 @@ export function GlowButton({
   return (
     <Button
       className={cn(
-        "relative overflow-hidden border-0 text-white shadow-lg shadow-fuchsia-500/30",
-        "bg-[linear-gradient(110deg,#7c3aed,#db2777,#f59e0b,#7c3aed)] bg-[length:250%_100%]",
-        "motion-safe:animate-[pricing-gradient-pan_6s_ease-in-out_infinite]",
+        "group/glow relative overflow-hidden border-0 text-white shadow-lg shadow-fuchsia-500/30",
+        "bg-[linear-gradient(110deg,#7c3aed,#db2777,#f59e0b)]",
         "hover:shadow-xl hover:shadow-fuchsia-500/40 hover:brightness-110",
         className,
       )}
@@ -23,7 +22,7 @@ export function GlowButton({
     >
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-white/35 blur-md motion-safe:animate-[pricing-shimmer_3.2s_ease-in-out_infinite]"
+        className="pointer-events-none absolute inset-y-0 left-0 w-1/3 -translate-x-full -skew-x-12 bg-white/35 blur-md motion-safe:transition-transform motion-safe:duration-700 motion-safe:group-hover/glow:translate-x-[350%]"
       />
       <span className="relative flex items-center gap-2">{children}</span>
     </Button>

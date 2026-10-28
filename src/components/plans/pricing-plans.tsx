@@ -132,7 +132,7 @@ export function PricingPlans({
             <Sparkles className="size-3.5" />
             {t("eyebrow")}
           </span>
-          <h1 className="bg-[linear-gradient(110deg,#7c3aed,#db2777,#f59e0b,#7c3aed)] bg-[length:250%_100%] bg-clip-text pb-1 text-4xl font-bold tracking-tight text-transparent md:text-6xl motion-safe:animate-[pricing-gradient-pan_10s_ease-in-out_infinite]">
+          <h1 className="bg-[linear-gradient(110deg,#7c3aed,#db2777,#f59e0b)] bg-clip-text pb-1 text-4xl font-bold tracking-tight text-transparent md:text-6xl">
             {t("headline")}
           </h1>
           <p className="text-base text-muted-foreground md:text-lg">

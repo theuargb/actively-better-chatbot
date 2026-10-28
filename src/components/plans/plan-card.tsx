@@ -102,12 +102,15 @@ export function PlanCard({
       )}
       <div
         className={cn(
-          "relative flex h-full flex-col overflow-hidden rounded-[calc(1.5rem-2px)] bg-card",
+          // isolate + transform-gpu keep the rounded clip and the scaled art in
+          // one compositing layer; otherwise Chromium leaks a 1px seam on hover.
+          "relative isolate flex h-full transform-gpu flex-col overflow-hidden rounded-[calc(1.5rem-2px)] bg-card",
           !card.recommended && "border shadow-sm group-hover:shadow-xl",
           isCurrent && !card.recommended && "ring-2 ring-primary/50",
         )}
       >
-        <div className="relative h-36 overflow-hidden">
+        {/* Masking fades the art into the card itself; an overlay gradient left a hairline at its edge. */}
+        <div className="relative h-36 overflow-hidden [mask-image:linear-gradient(to_bottom,black_45%,transparent)]">
           <Image
             src={art}
             alt=""
@@ -117,7 +120,6 @@ export function PlanCard({
             unoptimized
             className="object-cover transition-transform duration-[1500ms] ease-out group-hover:scale-110"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-card" />
           <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
             {card.recommended ? (
               <Badge className="border-white/30 bg-black/40 text-white backdrop-blur-md">
