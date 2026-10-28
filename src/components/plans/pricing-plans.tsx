@@ -6,7 +6,7 @@ import { formatPlanPrice } from "lib/plan/currency";
 import { cn } from "lib/utils";
 import { Check, Loader } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "ui/badge";
 import { Button } from "ui/button";
@@ -21,6 +21,7 @@ type Props = {
   subscription: UserSubscriptionSummary | null;
   billingEnabled: boolean;
   currency: string;
+  checkoutSuccess: boolean;
 };
 
 export function PricingPlans({
@@ -29,12 +30,17 @@ export function PricingPlans({
   subscription,
   billingEnabled,
   currency,
+  checkoutSuccess,
 }: Props) {
   const t = useTranslations("Pricing");
   const locale = useLocale();
   const [annual, setAnnual] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const showAnnualToggle = plans.some((plan) => plan.hasAnnual);
+
+  useEffect(() => {
+    if (checkoutSuccess) toast.success(t("checkoutSuccess"));
+  }, [checkoutSuccess, t]);
 
   const fail = () => {
     setPending(null);
