@@ -324,7 +324,11 @@
       "confirmDeleteExport": "Ви впевнені, що хочете видалити це посилання? Цю дію не можна скасувати.",
       "exportDeleted": "Посилання успішно видалено",
       "failedToDeleteExport": "Не вдалося видалити посилання"
-    }
+    },
+    "modelLockedTitle": "Ця модель потребує вищого тарифу",
+    "modelLockedDescription": "{model} доступна на тарифі {plan} і вище.",
+    "modelLockedUnavailable": "{model} зараз недоступна на жодному тарифі.",
+    "seePlans": "Переглянути тарифи"
   },
   "Layout": {
     "workflow": "Workflow",
@@ -380,7 +384,8 @@
     "showAllChats": "Показати всі",
     "showLessChats": "Показати менше",
     "reportAnIssue": "Report an issue",
-    "joinCommunity": "Join Community"
+    "joinCommunity": "Join Community",
+    "plansAndBilling": "Тарифи та оплата"
   },
   "Archive": {
     "title": "Папки",
@@ -743,6 +748,9 @@
       "failedToUpdateRole": "Failed to update role",
       "cannotUpdateOwnRole": "You cannot update your own role",
       "roleUpdatedSuccessfullyTo": "User role updated successfully to {role}"
+    },
+    "Models": {
+      "title": "Доступ до моделей"
     }
   },
   "MCP": {
@@ -795,5 +803,24 @@
     "publicDescription": "Featured for all users to use",
     "featured": "Featured",
     "featuredDescription": "Featured for all users to use"
+  },
+  "Pricing": {
+    "title": "Тарифи та оплата",
+    "description": "Оберіть тариф, який відповідає тому, як ви користуєтесь асистентом.",
+    "monthly": "Щомісяця",
+    "annual": "Щороку",
+    "perMonth": "/ міс.",
+    "perYear": "/ рік",
+    "currentPlan": "Поточний тариф",
+    "subscribe": "Підписатися",
+    "switchPlan": "Перейти на цей тариф",
+    "manageBilling": "Керування оплатою",
+    "cancelsOn": "Скасується {date}",
+    "renewsOn": "Поновиться {date}",
+    "notPurchasable": "Доступно за запитом",
+    "assignedByAdmin": "Призначено адміністратором",
+    "billingDisabled": "Онлайн-оплата поки недоступна.",
+    "checkoutSuccess": "Оплату отримано. Тариф оновиться за кілька секунд.",
+    "checkoutFailed": "Не вдалося розпочати оплату. Спробуйте ще раз."
   }
 }
