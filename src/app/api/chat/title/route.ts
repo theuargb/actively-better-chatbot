@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       return new Response(
         buildModelLockedMessage({
           model: resolvedModel.identity.model,
-          requiredPlanName: access.requiredPlanName,
+          requiredPlan: access.requiredPlan,
         }),
         { status: 403 },
       );

@@ -74,9 +74,6 @@
   "Chat": {
     "Error": "Error de Chat",
     "thisMessageWasNotSavedPleaseTryTheChatAgain": "Este mensaje no se guardó. Por favor, intenta el chat nuevamente.",
-    "rateLimitedTitle": "Has alcanzado el límite de IA",
-    "rateLimitedHourly": "Puedes enviar hasta {limit} mensajes de IA por hora.",
-    "rateLimitedDaily": "Puedes enviar hasta {limit} mensajes de IA por día.",
     "rateLimitedRetryAfter": "Inténtalo de nuevo en {minutes} min",
     "rateLimitedSupport": "¿Necesitas más? Habla con tu administrador.",
     "threadLimitReachedTitle": "Este chat alcanzó su límite de {limit} mensajes",

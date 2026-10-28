@@ -74,9 +74,6 @@
   "Chat": {
     "Error": "チャットエラー",
     "thisMessageWasNotSavedPleaseTryTheChatAgain": "このメッセージは保存されませんでした。もう一度チャットをお試しください。",
-    "rateLimitedTitle": "AI の制限に達しました",
-    "rateLimitedHourly": "1 時間に {limit} 件まで AI メッセージを送信できます。",
-    "rateLimitedDaily": "1 日に {limit} 件まで AI メッセージを送信できます。",
     "rateLimitedRetryAfter": "{minutes} 分後に再試行してください",
     "rateLimitedSupport": "さらに必要な場合は管理者にお問い合わせください。",
     "threadLimitReachedTitle": "このチャットは {limit} 件の上限に達しました",

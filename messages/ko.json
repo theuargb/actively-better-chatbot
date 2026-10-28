@@ -75,9 +75,6 @@
   "Chat": {
     "Error": "채팅 오류",
     "thisMessageWasNotSavedPleaseTryTheChatAgain": "이 메시지는 저장되지 않았습니다. 다시 시도해주세요.",
-    "rateLimitedTitle": "AI 한도에 도달했습니다",
-    "rateLimitedHourly": "한 시간에 최대 {limit}개의 AI 메시지를 보낼 수 있습니다.",
-    "rateLimitedDaily": "하루에 최대 {limit}개의 AI 메시지를 보낼 수 있습니다.",
     "rateLimitedRetryAfter": "{minutes}분 후에 다시 시도해주세요",
     "rateLimitedSupport": "더 필요하면 관리자에게 문의하세요.",
     "threadLimitReachedTitle": "이 채팅은 {limit}개 메시지 한도에 도달했습니다",

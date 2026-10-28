@@ -11,8 +11,16 @@ import { isBillingEnabled } from "lib/billing/stripe";
 import { customModelProvider } from "lib/ai/models";
 import { planRepository } from "lib/db/repository";
 import { pickEffectivePlan, planTier } from "./effective-plan";
+import { getMaxChatLength, getWindowLimit } from "lib/ai/rate-limit";
+import type { RateLimitWindow } from "lib/ai/rate-limit-message";
 import { findUnlockingPlan, getModelMinTier } from "./model-access";
 import { buildPricingView } from "./pricing-view";
+import {
+  type LimitOffer,
+  type PlanOffer,
+  pickLimitOffer,
+  toPlanOffer,
+} from "./upgrade-offer";
 
 export async function getEffectivePlan(userId: string): Promise<EffectivePlan> {
   const { assigned, subscribed } =
@@ -22,7 +30,7 @@ export async function getEffectivePlan(userId: string): Promise<EffectivePlan> {
 
 export type ModelAccessResult =
   | { ok: true; plan: EffectivePlan }
-  | { ok: false; plan: EffectivePlan; requiredPlanName: string | null };
+  | { ok: false; plan: EffectivePlan; requiredPlan: PlanOffer | null };
 
 /**
  * `identity` must already be resolved (see customModelProvider.resolveModel) so
@@ -47,14 +55,14 @@ export async function checkModelAccess(
   return {
     ok: false,
     plan: effectivePlan,
-    requiredPlanName: unlocking?.name ?? null,
+    requiredPlan: unlocking ? toPlanOffer(unlocking, isBillingEnabled()) : null,
   };
 }
 
 export class ModelLockedError extends Error {
   constructor(
     model: ChatModel,
-    readonly requiredPlanName: string | null,
+    readonly requiredPlan: PlanOffer | null,
   ) {
     super(`Model ${model.provider}/${model.model} requires a higher plan`);
     this.name = "ModelLockedError";
@@ -64,7 +72,37 @@ export class ModelLockedError extends Error {
 export async function assertModelAccess(userId: string, model?: ChatModel) {
   const { identity } = customModelProvider.resolveModel(model);
   const access = await checkModelAccess(userId, identity);
-  if (!access.ok) throw new ModelLockedError(identity, access.requiredPlanName);
+  if (!access.ok) throw new ModelLockedError(identity, access.requiredPlan);
+}
+
+/**
+ * The plan to propose when a user hits `currentLimit`: the cheapest higher tier
+ * whose configured limit (hourly, daily, or chat length) is actually higher.
+ */
+export async function getLimitOffer(
+  context: {
+    plan: EffectivePlan;
+    roles: string[];
+    model: ChatModel;
+  },
+  kind: RateLimitWindow | "thread",
+  currentLimit: number,
+): Promise<LimitOffer | null> {
+  return pickLimitOffer(await planRepository.list(false), {
+    currentTier: planTier(context.plan),
+    currentLimit,
+    billingEnabled: isBillingEnabled(),
+    limitFor: (candidate) => {
+      const scopes = {
+        roles: context.roles,
+        planCode: candidate.code,
+        model: context.model,
+      };
+      return kind === "thread"
+        ? getMaxChatLength(scopes)
+        : getWindowLimit(scopes, kind);
+    },
+  });
 }
 
 export type PricingPageData = {

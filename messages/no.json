@@ -194,9 +194,6 @@
   "Chat": {
     "Error": "Chatfeil",
     "thisMessageWasNotSavedPleaseTryTheChatAgain": "Denne meldingen ble ikke lagret. Prøv chatten på nytt.",
-    "rateLimitedTitle": "Du har nådd AI-grensen",
-    "rateLimitedHourly": "Du kan sende opptil {limit} AI-meldinger per time.",
-    "rateLimitedDaily": "Du kan sende opptil {limit} AI-meldinger per dag.",
     "rateLimitedRetryAfter": "Prøv igjen om {minutes} min",
     "rateLimitedSupport": "Trenger du mer? Kontakt administratoren din.",
     "threadLimitReachedTitle": "Denne chatten nådde grensen på {limit} meldinger",

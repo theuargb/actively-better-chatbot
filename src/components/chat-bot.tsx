@@ -7,7 +7,9 @@ import { cn, createDebounce, generateUUID, truncateString } from "lib/utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ChatGreeting } from "./chat-greeting";
+import { usePlanOfferAction } from "./chat-limit-notice";
 import { ErrorMessage, PreviewMessage } from "./message";
+import type { LimitOffer } from "lib/plan/upgrade-offer";
 import PromptInput from "./prompt-input";
 
 import {
@@ -91,6 +93,8 @@ export default function ChatBot({
 }: Props) {
   useMcpList();
   const chatT = useTranslations("Chat");
+  // onData is captured by useChat on first render; read the action through a ref.
+  const offerActionRef = useToRef(usePlanOfferAction().run);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const { uploadFiles } = useThreadFileUploader(threadId);
@@ -246,12 +250,23 @@ export default function ChatBot({
     experimental_throttle: 100,
     onData: (dataPart: any) => {
       if (dataPart.type === "data-thread-limit-warning") {
-        const { remaining, limit } = dataPart.data as {
+        const { remaining, limit, offer } = dataPart.data as {
           remaining: number;
           limit: number;
+          offer: LimitOffer | null;
         };
         toast.warning(chatT("threadLimitWarningTitle", { remaining }), {
-          description: chatT("threadLimitWarningDescription", { limit }),
+          description: offer
+            ? chatT("threadLimitWarningUpsell", { plan: offer.plan.name })
+            : chatT("threadLimitWarningDescription", { limit }),
+          action: offer
+            ? {
+                label: offer.plan.purchasable
+                  ? chatT("upgradeTo", { plan: offer.plan.name })
+                  : chatT("seePlans"),
+                onClick: () => offerActionRef.current(offer.plan),
+              }
+            : undefined,
         });
       }
     },

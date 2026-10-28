@@ -74,9 +74,6 @@
   "Chat": {
     "Error": "Erreur de Chat",
     "thisMessageWasNotSavedPleaseTryTheChatAgain": "Ce message n'a pas été enregistré. Veuillez réessayer le chat.",
-    "rateLimitedTitle": "Vous avez atteint la limite IA",
-    "rateLimitedHourly": "Vous pouvez envoyer jusqu'à {limit} messages IA par heure.",
-    "rateLimitedDaily": "Vous pouvez envoyer jusqu'à {limit} messages IA par jour.",
     "rateLimitedRetryAfter": "Réessayez dans {minutes} min",
     "rateLimitedSupport": "Besoin de plus ? Contactez votre administrateur.",
     "threadLimitReachedTitle": "Cette conversation a atteint sa limite de {limit} messages",
