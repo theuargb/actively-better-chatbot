@@ -5,7 +5,7 @@ import { modelAccessRepository } from "lib/db/repository";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-export const UpdateModelAccessSchema = z.object({
+const UpdateModelAccessSchema = z.object({
   provider: z.string().min(1),
   model: z.string().min(1),
   minTier: z.coerce.number().int().min(0).max(1000),
