@@ -34,6 +34,51 @@ describe("CreatePlanSchema", () => {
     if (result.success) expect(result.data.active).toBe(false);
   });
 
+  it("defaults the tier to 1 and coerces a submitted tier", () => {
+    const result = CreatePlanSchema.safeParse(validPlan);
+    expect(result.success && result.data.tier).toBe(1);
+    const tiered = CreatePlanSchema.safeParse({ ...validPlan, tier: "3" });
+    expect(tiered.success && tiered.data.tier).toBe(3);
+    expect(
+      CreatePlanSchema.safeParse({ ...validPlan, tier: "-1" }).success,
+    ).toBe(false);
+    expect(
+      CreatePlanSchema.safeParse({ ...validPlan, tier: "1.5" }).success,
+    ).toBe(false);
+  });
+
+  it("turns blank Stripe price ids into null and rejects malformed ones", () => {
+    const blank = CreatePlanSchema.safeParse({
+      ...validPlan,
+      stripePriceId: "",
+    });
+    expect(blank.success && blank.data.stripePriceId).toBeNull();
+    const ok = CreatePlanSchema.safeParse({
+      ...validPlan,
+      stripePriceId: "price_1Abc",
+    });
+    expect(ok.success && ok.data.stripePriceId).toBe("price_1Abc");
+    expect(
+      CreatePlanSchema.safeParse({ ...validPlan, stripePriceId: "prod_1Abc" })
+        .success,
+    ).toBe(false);
+  });
+
+  it("requires a monthly Stripe price for an annual one", () => {
+    const result = CreatePlanSchema.safeParse({
+      ...validPlan,
+      stripeAnnualPriceId: "price_1Year",
+    });
+    expect(result.success).toBe(false);
+    expect(
+      CreatePlanSchema.safeParse({
+        ...validPlan,
+        stripePriceId: "price_1Month",
+        stripeAnnualPriceId: "price_1Year",
+      }).success,
+    ).toBe(true);
+  });
+
   it("requires a code", () => {
     expect(CreatePlanSchema.safeParse({ ...validPlan, code: "" }).success).toBe(
       false,

@@ -43,6 +43,10 @@ export function PlansTable({
                   <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
                     {plan.code}
                   </code>
+                  <Badge variant="outline">Tier {plan.tier}</Badge>
+                  {plan.stripePriceId && (
+                    <Badge variant="secondary">Stripe</Badge>
+                  )}
                   {!plan.active && <Badge variant="secondary">Archived</Badge>}
                 </div>
                 {plan.shortDescription ? (
@@ -51,8 +55,13 @@ export function PlansTable({
                   </p>
                 ) : null}
               </div>
-              <span className="shrink-0 text-sm font-medium tabular-nums">
+              <span className="shrink-0 text-right text-sm font-medium tabular-nums">
                 {formatPlanPrice(plan.price, currency)}
+                {plan.annualPrice ? (
+                  <span className="block text-xs font-normal text-muted-foreground">
+                    {formatPlanPrice(plan.annualPrice, currency)} / year
+                  </span>
+                ) : null}
               </span>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
             </Link>

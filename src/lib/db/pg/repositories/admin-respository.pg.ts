@@ -45,7 +45,8 @@ const VALID_ANALYTICS_WINDOWS = [7, 30, 90] as const;
 
 // Helper function to get user columns without password
 const getUserColumnsWithoutPassword = () => {
-  const { password, ...userColumns } = getTableColumns(UserTable);
+  const { password, stripeCustomerId, ...userColumns } =
+    getTableColumns(UserTable);
   return userColumns;
 };
 
@@ -71,6 +72,7 @@ const pgAdminRepository: AdminRepository = {
           code: PlanTable.code,
           name: PlanTable.name,
           active: PlanTable.active,
+          tier: PlanTable.tier,
         },
         lastLogin: sql<Date | null>`(
           SELECT MAX(${SessionTable.updatedAt}) 

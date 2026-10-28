@@ -34,6 +34,7 @@ export function PlanForm({
   const router = useRouter();
   const [active, setActive] = useState(plan?.active ?? true);
   const [code, setCode] = useState(plan?.code ?? "");
+  const [stripePriceId, setStripePriceId] = useState(plan?.stripePriceId ?? "");
   const [isPending, startTransition] = useTransition();
 
   const submit = (formData: FormData) => {
@@ -66,7 +67,8 @@ export function PlanForm({
             {plan ? "Edit plan" : "Create plan"}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Plans are managed by admins only and drive per-plan AI limits.
+            Plans drive model access (tier), AI limits (code) and Stripe
+            billing.
           </p>
         </div>
       </div>
@@ -104,20 +106,69 @@ export function PlanForm({
                   value={code}
                   onChange={(event) => setCode(event.target.value)}
                   required
+                  readOnly={Boolean(plan?.stripePriceId)}
                   pattern="[A-Za-z0-9_-]+"
                   placeholder="plus"
                   className="font-mono"
                 />
               </Field>
-              <Field label="Price" hint={`Amount in ${currency}.`}>
+              <Field
+                label="Price"
+                hint={
+                  stripePriceId.trim()
+                    ? "Synced from Stripe on save."
+                    : `Amount in ${currency}.`
+                }
+              >
                 <Input
                   name="price"
                   type="number"
                   min="0"
                   step="0.01"
                   defaultValue={plan?.price}
+                  readOnly={Boolean(stripePriceId.trim())}
                   required
                   placeholder="0.00"
+                />
+              </Field>
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-3">
+              <Field
+                label="Tier"
+                hint="0 = same as no plan. Higher tiers unlock models with that minimum tier."
+              >
+                <Input
+                  name="tier"
+                  type="number"
+                  min="0"
+                  max="1000"
+                  step="1"
+                  defaultValue={plan?.tier ?? 1}
+                  required
+                />
+              </Field>
+              <Field
+                label="Stripe monthly price ID"
+                hint="Leave empty to keep the plan admin-assigned only."
+              >
+                <Input
+                  name="stripePriceId"
+                  value={stripePriceId}
+                  onChange={(event) => setStripePriceId(event.target.value)}
+                  placeholder="price_…"
+                  className="font-mono"
+                />
+              </Field>
+              <Field
+                label="Stripe annual price ID"
+                hint="Optional. Needs a monthly price."
+              >
+                <Input
+                  name="stripeAnnualPriceId"
+                  defaultValue={plan?.stripeAnnualPriceId ?? ""}
+                  placeholder="price_…"
+                  className="font-mono"
                 />
               </Field>
             </div>

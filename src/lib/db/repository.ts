@@ -13,6 +13,7 @@ import { pgPlanRepository } from "./pg/repositories/plan-repository.pg";
 import { pgUrlRewriteRepository } from "./pg/repositories/url-rewrite-repository.pg";
 import { pgPromptAdRepository } from "./pg/repositories/prompt-ad-repository.pg";
 import { pgBannerRepository } from "./pg/repositories/banner-repository.pg";
+import { pgModelAccessRepository } from "./pg/repositories/model-access-repository.pg";
 
 export const chatRepository = pgChatRepository;
 export const userRepository = pgUserRepository;
@@ -32,3 +33,4 @@ export const planRepository = pgPlanRepository;
 export const urlRewriteRepository = pgUrlRewriteRepository;
 export const promptAdRepository = pgPromptAdRepository;
 export const bannerRepository = pgBannerRepository;
+export const modelAccessRepository = pgModelAccessRepository;

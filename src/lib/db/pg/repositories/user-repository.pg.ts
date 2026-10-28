@@ -17,7 +17,8 @@ import { count, eq, getTableColumns, sql } from "drizzle-orm";
 
 // Helper function to get user columns without password
 const getUserColumnsWithoutPassword = () => {
-  const { password, ...userColumns } = getTableColumns(UserTable);
+  const { password, stripeCustomerId, ...userColumns } =
+    getTableColumns(UserTable);
   return userColumns;
 };
 
@@ -91,6 +92,7 @@ export const pgUserRepository: UserRepository = {
           code: PlanTable.code,
           name: PlanTable.name,
           active: PlanTable.active,
+          tier: PlanTable.tier,
         },
         lastLogin: sql<Date | null>`(
           SELECT MAX(${SessionTable.updatedAt}) 

@@ -35,3 +35,29 @@ export const formatPlanPrice = (
     return `${currency} ${amount.toFixed(2)}`;
   }
 };
+
+// Stripe amounts are in the smallest currency unit; these currencies have none.
+// https://docs.stripe.com/currencies#zero-decimal
+const ZERO_DECIMAL_CURRENCIES = new Set([
+  "BIF",
+  "CLP",
+  "DJF",
+  "GNF",
+  "JPY",
+  "KMF",
+  "KRW",
+  "MGA",
+  "PYG",
+  "RWF",
+  "UGX",
+  "VND",
+  "VUV",
+  "XAF",
+  "XOF",
+  "XPF",
+]);
+
+export const fromStripeAmount = (unitAmount: number, currency: string) =>
+  ZERO_DECIMAL_CURRENCIES.has(currency.toUpperCase())
+    ? unitAmount
+    : unitAmount / 100;

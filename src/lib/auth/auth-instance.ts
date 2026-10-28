@@ -4,13 +4,21 @@ import { type BetterAuthOptions, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { admin as adminPlugin } from "better-auth/plugins";
+import { stripe } from "@better-auth/stripe";
 import { pgDb } from "lib/db/pg/db.pg";
 import {
   AccountTable,
   SessionTable,
+  SubscriptionTable,
   UserTable,
   VerificationTable,
 } from "lib/db/pg/schema.pg";
+import {
+  cancelStripeSubscriptionsForUser,
+  getStripeClient,
+  getStripePlans,
+  isBillingEnabled,
+} from "lib/billing/stripe";
 import { userRepository } from "lib/db/repository";
 import logger from "logger";
 import { headers } from "next/headers";
@@ -37,6 +45,17 @@ const options = {
         user,
       },
     }),
+    // Customers are created on first checkout, so sign-up never depends on Stripe.
+    ...(isBillingEnabled()
+      ? [
+          stripe({
+            stripeClient: getStripeClient()!,
+            stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET!,
+            createCustomerOnSignUp: false,
+            subscription: { enabled: true, plans: getStripePlans },
+          }),
+        ]
+      : []),
     nextCookies(),
   ],
   baseURL: process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_BASE_URL,
@@ -46,6 +65,9 @@ const options = {
     },
     deleteUser: {
       enabled: true,
+      beforeDelete: async (user) => {
+        await cancelStripeSubscriptionsForUser(user.id);
+      },
     },
   },
   database: drizzleAdapter(pgDb, {
@@ -55,6 +77,7 @@ const options = {
       session: SessionTable,
       account: AccountTable,
       verification: VerificationTable,
+      subscription: SubscriptionTable,
     },
   }),
   databaseHooks: {

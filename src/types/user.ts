@@ -28,6 +28,7 @@ export type BasicUser = Omit<
   | "banReason"
   | "banExpires"
   | "planId"
+  | "stripeCustomerId"
 > & {
   image?: string | null;
   role?: string | null;

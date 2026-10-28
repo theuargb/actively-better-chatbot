@@ -17,6 +17,7 @@ export interface AdminUsersQuery {
 export type AdminUserListItem = Omit<
   User,
   | "password"
+  | "stripeCustomerId"
   | "preferences"
   | "image"
   | "role"

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_PLAN_CURRENCY,
   formatPlanPrice,
+  fromStripeAmount,
   getPlanCurrency,
 } from "./currency";
 
@@ -51,5 +52,15 @@ describe("formatPlanPrice", () => {
 
   it("passes through unparseable amounts", () => {
     expect(formatPlanPrice("n/a", "USD", "en-US")).toBe("USD n/a");
+  });
+});
+
+describe("fromStripeAmount", () => {
+  it("converts minor units for two-decimal currencies", () => {
+    expect(fromStripeAmount(1999, "usd")).toBe(19.99);
+  });
+
+  it("leaves zero-decimal currencies alone", () => {
+    expect(fromStripeAmount(500, "JPY")).toBe(500);
   });
 });
