@@ -14,6 +14,8 @@ import { mcpRepository, workflowRepository } from "lib/db/repository";
 import { safe } from "ts-safe";
 import { objectFlow } from "lib/utils";
 import { mcpClientsManager } from "lib/ai/mcp/mcp-manager";
+import { buildModelLockedMessage } from "lib/plan/model-locked-message";
+import { checkModelAccess } from "lib/plan/server";
 
 const logger = globalLogger.withDefaults({
   message: colorize("blackBright", `Agent Generate API: `),
@@ -35,6 +37,20 @@ export async function POST(request: Request) {
       return new Response("Unauthorized", { status: 401 });
     }
 
+    const resolvedModel = customModelProvider.resolveModel(chatModel);
+    const access = await checkModelAccess(
+      session.user.id,
+      resolvedModel.identity,
+    );
+    if (!access.ok) {
+      return new Response(
+        buildModelLockedMessage({
+          model: resolvedModel.identity.model,
+          requiredPlanName: access.requiredPlanName,
+        }),
+        { status: 403 },
+      );
+    }
     const toolNames = new Set<string>();
 
     await safe(loadAppDefaultTools)
@@ -87,7 +103,7 @@ export async function POST(request: Request) {
     const system = buildAgentGenerationPrompt(Array.from(toolNames));
 
     const result = streamObject({
-      model: customModelProvider.getModel(chatModel),
+      model: resolvedModel.model,
       system,
       prompt: message,
       schema: dynamicAgentTable,

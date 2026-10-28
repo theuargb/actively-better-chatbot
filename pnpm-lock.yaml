@@ -35,6 +35,9 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.958.0
         version: 3.958.0
+      '@better-auth/stripe':
+        specifier: 1.4.9
+        version: 1.4.9(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.2.1))(jose@6.1.3)(kysely@0.28.9)(nanostores@1.1.0))(better-auth@1.4.9(drizzle-kit@0.30.6)(drizzle-orm@0.41.0(@libsql/client@0.15.6)(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(gel@2.2.0)(kysely@0.28.9)(pg@8.16.3))(next@16.1.6(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(pg@8.16.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@20.19.27)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(stripe@20.4.1(@types/node@20.19.27))
       '@google/genai':
         specifier: ^1.34.0
         version: 1.34.0(@modelcontextprotocol/sdk@1.25.1(hono@4.11.3)(zod@4.2.1))
@@ -233,6 +236,9 @@ importers:
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      stripe:
+        specifier: ^20
+        version: 20.4.1(@types/node@20.19.27)
       swr:
         specifier: ^2.3.8
         version: 2.3.8(react@19.2.4)
@@ -586,6 +592,13 @@ packages:
       jose: ^6.1.0
       kysely: ^0.28.5
       nanostores: ^1.0.1
+
+  '@better-auth/stripe@1.4.9':
+    resolution: {integrity: sha512-jEwd0RY+ULHj4b1ib26D7WDrihKEXcKDIKG6gItUtINxuiUqRZPTfygI4KhBbZOQSjSiDSHwZFxkXb0ZcOpg6w==}
+    peerDependencies:
+      '@better-auth/core': 1.4.9
+      better-auth: 1.4.9
+      stripe: ^18 || ^19 || ^20
 
   '@better-auth/telemetry@1.4.9':
     resolution: {integrity: sha512-Tthy1/Gmx+pYlbvRQPBTKfVei8+pJwvH1NZp+5SbhwA6K2EXIaoonx/K6N/AXYs2aKUpyR4/gzqDesDjL7zd6A==}
@@ -6151,6 +6164,15 @@ packages:
   strip-literal@3.1.0:
     resolution: {integrity: sha512-8r3mkIM/2+PpjHoOtiAW8Rg3jJLHaV7xPwG+YRGrv6FP0wwk/toTpATxWYOW0BKdWwl82VT2tFYi5DlROa0Mxg==}
 
+  stripe@20.4.1:
+    resolution: {integrity: sha512-axCguHItc8Sxt0HC6aSkdVRPffjYPV7EQqZRb2GkIa8FzWDycE7nHJM19C6xAIynH1Qp1/BHiopSi96jGBxT0w==}
+    engines: {node: '>=16'}
+    peerDependencies:
+      '@types/node': '>=16'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+
   strnum@2.1.2:
     resolution: {integrity: sha512-l63NF9y/cLROq/yqKXSLtcMeeyOfnSQlfMSlzFt/K73oIaD8DGaQWd7Z34X9GPiKqP5rbSh84Hl4bOlLcjiSrQ==}
 
@@ -7278,6 +7300,14 @@ snapshots:
       jose: 6.1.3
       kysely: 0.28.9
       nanostores: 1.1.0
+      zod: 4.2.1
+
+  '@better-auth/stripe@1.4.9(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.2.1))(jose@6.1.3)(kysely@0.28.9)(nanostores@1.1.0))(better-auth@1.4.9(drizzle-kit@0.30.6)(drizzle-orm@0.41.0(@libsql/client@0.15.6)(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(gel@2.2.0)(kysely@0.28.9)(pg@8.16.3))(next@16.1.6(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(pg@8.16.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@20.19.27)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)))(stripe@20.4.1(@types/node@20.19.27))':
+    dependencies:
+      '@better-auth/core': 1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.2.1))(jose@6.1.3)(kysely@0.28.9)(nanostores@1.1.0)
+      better-auth: 1.4.9(drizzle-kit@0.30.6)(drizzle-orm@0.41.0(@libsql/client@0.15.6)(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(gel@2.2.0)(kysely@0.28.9)(pg@8.16.3))(next@16.1.6(@opentelemetry/api@1.9.0)(@playwright/test@1.57.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(pg@8.16.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@20.19.27)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
+      defu: 6.1.4
+      stripe: 20.4.1(@types/node@20.19.27)
       zod: 4.2.1
 
   '@better-auth/telemetry@1.4.9(@better-auth/core@1.4.9(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.21)(better-call@1.1.7(zod@4.2.1))(jose@6.1.3)(kysely@0.28.9)(nanostores@1.1.0))':
@@ -13347,6 +13377,10 @@ snapshots:
   strip-literal@3.1.0:
     dependencies:
       js-tokens: 9.0.1
+
+  stripe@20.4.1(@types/node@20.19.27):
+    optionalDependencies:
+      '@types/node': 20.19.27
 
   strnum@2.1.2: {}
 

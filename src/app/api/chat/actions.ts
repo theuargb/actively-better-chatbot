@@ -1,11 +1,11 @@
 "use server";
 
 import {
+  LanguageModel,
+  type UIMessage,
   generateObject,
   generateText,
   jsonSchema,
-  LanguageModel,
-  type UIMessage,
 } from "ai";
 
 import {
@@ -24,7 +24,7 @@ import {
 } from "lib/db/repository";
 import { customModelProvider } from "lib/ai/models";
 import { toAny } from "lib/utils";
-import { McpServerCustomizationsPrompt, MCPToolInfo } from "app-types/mcp";
+import { MCPToolInfo, McpServerCustomizationsPrompt } from "app-types/mcp";
 import { serverCache } from "lib/cache";
 import { CacheKeys } from "lib/cache/cache-keys";
 import { getSession } from "auth/server";
@@ -34,6 +34,7 @@ import { JSONSchema7 } from "json-schema";
 import { ObjectJsonSchema7 } from "app-types/util";
 import { jsonSchemaToZod } from "lib/json-schema-to-zod";
 import { Agent } from "app-types/agent";
+import { assertModelAccess } from "lib/plan/server";
 
 export async function getUserId() {
   const session = await getSession();
@@ -119,6 +120,7 @@ export async function generateExampleToolSchemaAction(options: {
   toolInfo: MCPToolInfo;
   prompt?: string;
 }) {
+  await assertModelAccess(await getUserId(), options.model);
   const model = customModelProvider.getModel(options.model);
 
   const schema = jsonSchema(
@@ -203,6 +205,7 @@ export async function generateObjectAction({
   };
   schema: JSONSchema7 | ObjectJsonSchema7;
 }) {
+  await assertModelAccess(await getUserId(), model);
   const result = await generateObject({
     model: customModelProvider.getModel(model),
     system: prompt.system,

@@ -8,6 +8,8 @@ import { chatRepository } from "lib/db/repository";
 import { getSession } from "auth/server";
 import { colorize } from "consola/utils";
 import { handleError } from "../shared.chat";
+import { buildModelLockedMessage } from "lib/plan/model-locked-message";
+import { checkModelAccess } from "lib/plan/server";
 
 const logger = globalLogger.withDefaults({
   message: colorize("blackBright", `Title API: `),
@@ -32,12 +34,27 @@ export async function POST(request: Request) {
       return new Response("Unauthorized", { status: 401 });
     }
 
+    const resolvedModel = customModelProvider.resolveModel(chatModel);
+    const access = await checkModelAccess(
+      session.user.id,
+      resolvedModel.identity,
+    );
+    if (!access.ok) {
+      return new Response(
+        buildModelLockedMessage({
+          model: resolvedModel.identity.model,
+          requiredPlanName: access.requiredPlanName,
+        }),
+        { status: 403 },
+      );
+    }
+
     logger.info(
       `chatModel: ${chatModel?.provider}/${chatModel?.model}, threadId: ${threadId}`,
     );
 
     const result = streamText({
-      model: customModelProvider.getModel(chatModel),
+      model: resolvedModel.model,
       system: CREATE_THREAD_TITLE_PROMPT,
       experimental_transform: smoothStream({ chunking: "word" }),
       prompt: message,

@@ -11,12 +11,14 @@ import {
   buildUserSystemStaticPrompt,
 } from "lib/ai/prompts";
 import { getAiRateLimiter } from "lib/ai/rate-limit";
-import { getUserPlanCode, parseRoles } from "lib/ai/rate-limit-context";
+import { parseRoles } from "lib/ai/rate-limit-context";
 import { buildRateLimitMessage } from "lib/ai/rate-limit-message";
 import { getUserPreferences } from "lib/user/server";
 import globalLogger from "logger";
 
 import { colorize } from "consola/utils";
+import { buildModelLockedMessage } from "lib/plan/model-locked-message";
+import { checkModelAccess, getEffectivePlan } from "lib/plan/server";
 
 const logger = globalLogger.withDefaults({
   message: colorize("blackBright", `Temporary Chat API: `),
@@ -38,12 +40,27 @@ export async function POST(request: Request) {
     };
     const resolvedModel = customModelProvider.resolveModel(chatModel);
     const isUserMessage = messages.at(-1)?.role === "user";
+    const effectivePlan = await getEffectivePlan(session.user.id);
+    const access = await checkModelAccess(
+      session.user.id,
+      resolvedModel.identity,
+      effectivePlan,
+    );
+    if (!access.ok) {
+      return new Response(
+        buildModelLockedMessage({
+          model: resolvedModel.identity.model,
+          requiredPlanName: access.requiredPlanName,
+        }),
+        { status: 403 },
+      );
+    }
     const rateLimiter = getAiRateLimiter();
     if (isUserMessage && rateLimiter) {
       const rateLimitResult = await rateLimiter.check({
         userId: session.user.id,
         roles: parseRoles((session.user as { role?: string }).role),
-        planCode: await getUserPlanCode(session.user.id),
+        planCode: effectivePlan?.code ?? null,
         model: resolvedModel.identity,
       });
       if (!rateLimitResult.ok) {

@@ -12,6 +12,14 @@ const planCode = z
     "Use letters, numbers, hyphens, or underscores",
   );
 
+const stripePriceId = z
+  .string()
+  .trim()
+  .regex(/^price_[A-Za-z0-9]+$/, "Expected a Stripe price ID (price_…)")
+  .or(z.literal(""))
+  .default("")
+  .transform((value) => value || null);
+
 const planFields = {
   code: planCode,
   name: z.string().trim().min(1, "Plan name is required").max(120),
@@ -19,11 +27,31 @@ const planFields = {
   description: z.string().trim().max(10_000).default(""),
   features: z.string().default(""),
   price: z.coerce.number().finite().min(0, "Price cannot be negative"),
+  tier: z.coerce.number().int().min(0).max(1000).default(1),
+  stripePriceId,
+  stripeAnnualPriceId: stripePriceId,
   active: z.enum(["true", "false"]).transform((value) => value === "true"),
 };
 
-export const CreatePlanSchema = z.object(planFields);
-export const UpdatePlanSchema = z.object({ id: z.uuid(), ...planFields });
+const requireMonthlyForAnnual = (
+  data: { stripePriceId: string | null; stripeAnnualPriceId: string | null },
+  ctx: z.RefinementCtx,
+) => {
+  if (data.stripeAnnualPriceId && !data.stripePriceId) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Annual price requires a monthly price",
+      path: ["stripeAnnualPriceId"],
+    });
+  }
+};
+
+export const CreatePlanSchema = z
+  .object(planFields)
+  .superRefine(requireMonthlyForAnnual);
+export const UpdatePlanSchema = z
+  .object({ id: z.uuid(), ...planFields })
+  .superRefine(requireMonthlyForAnnual);
 export const UpdateUserPlanSchema = z.object({
   userId: z.uuid(),
   planId: z

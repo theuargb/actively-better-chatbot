@@ -51,7 +51,7 @@ export function UserPlanSelector({
 
   return (
     <div className="space-y-2">
-      <Label htmlFor="user-plan">Plan</Label>
+      <Label htmlFor="user-plan">Assigned plan</Label>
       <div className="flex gap-2">
         <Select value={planId} onValueChange={setPlanId}>
           <SelectTrigger id="user-plan" className="flex-1">
@@ -90,8 +90,9 @@ export function UserPlanSelector({
       </div>
       <p className="text-xs text-muted-foreground">
         {user.plan
-          ? `Currently on ${user.plan.name}. Plan limits apply on top of role and model limits.`
-          : "No plan assigned. Only role and model limits apply."}
+          ? `Assigned ${user.plan.name} (tier ${user.plan.tier}). Plan limits apply on top of role and model limits.`
+          : "No plan assigned. Only role and model limits apply."}{" "}
+        An active paid subscription with a higher tier takes precedence.
       </p>
     </div>
   );

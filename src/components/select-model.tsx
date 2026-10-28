@@ -4,7 +4,7 @@ import { appStore } from "@/app/store";
 import { useChatModels } from "@/hooks/queries/use-chat-models";
 import { ChatModel } from "app-types/chat";
 import { cn } from "lib/utils";
-import { CheckIcon, ChevronDown } from "lucide-react";
+import { CheckIcon, ChevronDown, Lock } from "lucide-react";
 import { Fragment, memo, PropsWithChildren, useEffect, useState } from "react";
 import { Button } from "ui/button";
 
@@ -19,6 +19,7 @@ import {
 } from "ui/command";
 import { ModelProviderIcon } from "ui/model-provider-icon";
 import { Popover, PopoverContent, PopoverTrigger } from "ui/popover";
+import { useRouter } from "next/navigation";
 
 interface SelectModelProps {
   onSelect: (model: ChatModel) => void;
@@ -29,6 +30,7 @@ interface SelectModelProps {
 
 export const SelectModel = (props: PropsWithChildren<SelectModelProps>) => {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
   const { data: providers } = useChatModels();
   const [model, setModel] = useState(props.currentModel);
 
@@ -103,6 +105,11 @@ export const SelectModel = (props: PropsWithChildren<SelectModelProps>) => {
                       disabled={!provider.hasAPIKey}
                       className="cursor-pointer"
                       onSelect={() => {
+                        if (item.locked) {
+                          setOpen(false);
+                          router.push("/pricing");
+                          return;
+                        }
                         setModel({
                           provider: provider.provider,
                           model: item.name,
@@ -125,11 +132,23 @@ export const SelectModel = (props: PropsWithChildren<SelectModelProps>) => {
                       ) : (
                         <div className="ml-3" />
                       )}
-                      <span className="pr-2">{item.name}</span>
-                      {item.isToolCallUnsupported && (
-                        <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
-                          No tools
+                      <span className={cn("pr-2", item.locked && "opacity-60")}>
+                        {item.name}
+                      </span>
+                      {item.locked ? (
+                        <div
+                          className="ml-auto flex items-center gap-1 text-xs text-muted-foreground"
+                          data-testid={`model-locked-${provider.provider}-${item.name}`}
+                        >
+                          <Lock className="size-3" />
+                          {item.requiredPlanName}
                         </div>
+                      ) : (
+                        item.isToolCallUnsupported && (
+                          <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground">
+                            No tools
+                          </div>
+                        )
                       )}
                     </CommandItem>
                   ))}

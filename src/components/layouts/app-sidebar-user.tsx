@@ -26,8 +26,10 @@ import {
   MoonStar,
   ChevronRight,
   Settings,
+  CreditCard,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useRouter } from "next/navigation";
 import { appStore } from "@/app/store";
 import { BASE_THEMES, COOKIE_KEY_LOCALE, SUPPORTED_LOCALES } from "lib/const";
 import { capitalizeFirstLetter, cn, fetcher } from "lib/utils";
@@ -56,6 +58,7 @@ export function AppSidebarUserInner(props: {
   });
   const appStoreMutate = appStore((state) => state.mutate);
   const t = useTranslations("Layout");
+  const router = useRouter();
 
   const logout = () => {
     authClient.signOut().finally(() => {
@@ -165,6 +168,14 @@ export function AppSidebarUserInner(props: {
             >
               <Settings className="size-4 text-foreground" />
               <span>{t("userSettings")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => router.push("/pricing")}
+              className="cursor-pointer"
+              data-testid="plans-billing-menu-item"
+            >
+              <CreditCard className="size-4 text-foreground" />
+              <span>{t("plansAndBilling")}</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout} className="cursor-pointer">

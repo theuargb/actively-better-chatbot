@@ -22,7 +22,12 @@ import {
   parseRateLimitMessage,
   parseThreadLimitMessage,
 } from "lib/ai/rate-limit-message";
-import { RateLimitNotice, ThreadLimitNotice } from "./chat-limit-notice";
+import {
+  RateLimitNotice,
+  ThreadLimitNotice,
+  ModelLockedNotice,
+} from "./chat-limit-notice";
+import { parseModelLockedMessage } from "lib/plan/model-locked-message";
 
 type MessagePart = UIMessage["parts"][number];
 
@@ -253,7 +258,9 @@ export const ErrorMessage = ({
   const t = useTranslations();
   const parsedRateLimit = parseRateLimitMessage(error.message);
   const threadLimit = parseThreadLimitMessage(error.message);
+  const modelLocked = parseModelLockedMessage(error.message);
 
+  if (modelLocked) return <ModelLockedNotice payload={modelLocked} />;
   if (threadLimit) return <ThreadLimitNotice limit={threadLimit} />;
   if (parsedRateLimit) return <RateLimitNotice payload={parsedRateLimit} />;
 

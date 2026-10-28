@@ -27,7 +27,7 @@
 - **Per-domain renderers for HTTP tools** - `theuargb:feature-per-domain-http-invocation-renderers`
 - **Rate Limits (basic)** - `theuargb:feature-basic-rate-limits`
 - **Users Analytics** - `theuargb:feat-richer-user-stats`
-- **Plans & Rate Limits (WIP)** - `theuargb:feat-plans`
+- **Plans, Stripe subscriptions & per-model access** - `feat-plans-billing` (see [docs/plans-and-billing.md](docs/plans-and-billing.md))
 - **Prompt Examples / Ads** - `theuargb:feat-under-prompt-ads`
 - **Banners** - `theuargb:feat-banners`
 

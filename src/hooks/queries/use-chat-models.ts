@@ -12,6 +12,8 @@ export const useChatModels = (options?: SWRConfiguration) => {
         isToolCallUnsupported: boolean;
         isImageInputUnsupported: boolean;
         supportedFileMimeTypes: string[];
+        locked: boolean;
+        requiredPlanName: string | null;
       }[];
     }[]
   >("/api/chat/models", fetcher, {
@@ -21,9 +23,16 @@ export const useChatModels = (options?: SWRConfiguration) => {
     onSuccess: (data) => {
       const status = appStore.getState();
       if (!status.chatModel) {
-        const firstProvider = data[0].provider;
-        const model = data[0].models[0].name;
-        appStore.setState({ chatModel: { provider: firstProvider, model } });
+        // Never default to a model the user can't use.
+        const provider = data.find(
+          (p) => p.hasAPIKey && p.models.some((m) => !m.locked),
+        );
+        const model = provider?.models.find((m) => !m.locked);
+        if (provider && model) {
+          appStore.setState({
+            chatModel: { provider: provider.provider, model: model.name },
+          });
+        }
       }
     },
     ...options,
