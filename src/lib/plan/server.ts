@@ -1,13 +1,19 @@
 import "server-only";
 
 import type { ChatModel } from "app-types/chat";
-import type { EffectivePlan, PricingPlan } from "app-types/plan";
+import type {
+  EffectivePlan,
+  PricingView,
+  UserPlanSummary,
+  UserSubscriptionSummary,
+} from "app-types/plan";
 import { isBillingEnabled } from "lib/billing/stripe";
 import { customModelProvider } from "lib/ai/models";
-import { modelAccessRepository, planRepository } from "lib/db/repository";
+import { planRepository } from "lib/db/repository";
 import { getPlanCurrency } from "./currency";
 import { pickEffectivePlan, planTier } from "./effective-plan";
 import { findUnlockingPlan, getModelMinTier } from "./model-access";
+import { buildPricingView } from "./pricing-view";
 
 export async function getEffectivePlan(userId: string): Promise<EffectivePlan> {
   const { assigned, subscribed } =
@@ -31,7 +37,7 @@ export async function checkModelAccess(
 ): Promise<ModelAccessResult> {
   const effectivePlan =
     plan === undefined ? await getEffectivePlan(userId) : plan;
-  const minTier = getModelMinTier(await modelAccessRepository.list(), identity);
+  const minTier = getModelMinTier(identity);
   if (planTier(effectivePlan) >= minTier) {
     return { ok: true, plan: effectivePlan };
   }
@@ -62,38 +68,58 @@ export async function assertModelAccess(userId: string, model?: ChatModel) {
   if (!access.ok) throw new ModelLockedError(identity, access.requiredPlanName);
 }
 
-export async function getPricingPageData(userId: string) {
-  const [plans, effectivePlan, subscription] = await Promise.all([
+export type PricingPageData = {
+  view: PricingView;
+  subscription: UserSubscriptionSummary | null;
+  billingEnabled: boolean;
+  currency: string;
+};
+
+/** `free` carries the localized name/description of the synthesized Free card. */
+export async function getPricingPageData(
+  userId: string,
+  free: { name: string; description: string },
+): Promise<PricingPageData> {
+  const [plans, { assigned, subscribed }, subscription] = await Promise.all([
     planRepository.list(false),
-    getEffectivePlan(userId),
+    planRepository.getEntitlementPlans(userId),
     planRepository.getActiveSubscription(userId),
   ]);
-  const pricingPlans: PricingPlan[] = plans
-    .sort((a, b) => a.tier - b.tier || Number(a.price) - Number(b.price))
-    .map((plan) => ({
-      id: plan.id,
-      code: plan.code,
-      name: plan.name,
-      shortDescription: plan.shortDescription,
-      description: plan.description,
-      features: plan.features,
-      price: plan.price,
-      annualPrice: plan.annualPrice,
-      tier: plan.tier,
-      purchasable: Boolean(plan.stripePriceId),
-      hasAnnual: Boolean(plan.stripeAnnualPriceId),
-    }));
+  const billingEnabled = isBillingEnabled();
+  const models = customModelProvider.modelsInfo
+    .filter((p) => p.hasAPIKey)
+    .flatMap((p) =>
+      p.models.map((m) => ({
+        provider: p.provider,
+        name: m.name,
+        minTier: getModelMinTier({ provider: p.provider, model: m.name }),
+      })),
+    );
   return {
-    plans: pricingPlans,
-    effectivePlan: effectivePlan
-      ? {
-          code: effectivePlan.code,
-          name: effectivePlan.name,
-          source: effectivePlan.source,
-        }
-      : null,
+    view: buildPricingView({
+      plans,
+      assigned,
+      subscribed,
+      subscription,
+      models,
+      billingEnabled,
+      free,
+    }),
     subscription,
-    billingEnabled: isBillingEnabled(),
+    billingEnabled,
     currency: getPlanCurrency(),
   };
+}
+
+/** What the user menu shows: the plan name and whether a paid upgrade exists. */
+export async function getUserPlanSummary(
+  userId: string,
+): Promise<UserPlanSummary> {
+  const effective = await getEffectivePlan(userId);
+  const canUpgrade =
+    isBillingEnabled() &&
+    (await planRepository.list(false)).some(
+      (p) => p.stripePriceId && p.tier > planTier(effective),
+    );
+  return { planName: effective?.name ?? null, canUpgrade };
 }

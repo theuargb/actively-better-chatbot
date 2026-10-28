@@ -80,8 +80,8 @@ export function PlanForm({
           <CardHeader>
             <CardTitle>Plan details</CardTitle>
             <CardDescription>
-              The code namespaces this plan&apos;s environment keys, so changing
-              it moves its limits and counters.
+              The code keys this plan&apos;s entry in AI_RATE_LIMITS, so
+              changing it moves its limits and counters.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -91,9 +91,9 @@ export function PlanForm({
                 hint={
                   code ? (
                     <>
-                      Key prefix{" "}
+                      Rate-limit key{" "}
                       <code className="font-mono text-foreground">
-                        AI_RATE_LIMIT_PLAN_{normalizeCodePreview(code)}
+                        AI_RATE_LIMITS.plans["{code.toLowerCase()}"]
                       </code>
                     </>
                   ) : (
@@ -231,14 +231,6 @@ export function PlanForm({
     </div>
   );
 }
-
-/** Mirrors normalizeRateLimitKeyPart so admins can see the key they are creating. */
-const normalizeCodePreview = (code: string) =>
-  code
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9_-]+/g, "_")
-    .replace(/^_+|_+$/g, "");
 
 function Field({
   label,

@@ -17,7 +17,6 @@ import {
   Newspaper,
   Shield,
   Users,
-  Lock,
 } from "lucide-react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -37,13 +36,6 @@ const AppSidebarAdmin = () => {
         url: "/admin/plans",
         icon: CreditCard,
         isActive: pathname.startsWith("/admin/plans"),
-      },
-      {
-        id: "models",
-        title: t("Models.title"),
-        url: "/admin/models",
-        icon: Lock,
-        isActive: pathname.startsWith("/admin/models"),
       },
       {
         id: "users",

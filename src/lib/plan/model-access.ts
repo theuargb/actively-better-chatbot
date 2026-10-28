@@ -1,18 +1,19 @@
 import type { ChatModel } from "app-types/chat";
+import { modelConfigKey, readJsonEnv } from "lib/env-json";
+import { z } from "zod";
 
-export type ModelAccessRule = {
-  provider: string;
-  model: string;
-  minTier: number;
-};
+const ModelMinTiersSchema = z.record(
+  z.string().includes("/"),
+  z.number().int().nonnegative(),
+);
 
-/** A model with no rule is open to everyone (tier 0). */
-export const getModelMinTier = (
-  rules: ModelAccessRule[],
-  model: ChatModel,
-): number =>
-  rules.find((r) => r.provider === model.provider && r.model === model.model)
-    ?.minTier ?? 0;
+/** `AI_MODEL_MIN_TIERS`: "<provider>/<model>" -> minimum plan tier. */
+export const getModelMinTiers = () =>
+  readJsonEnv("AI_MODEL_MIN_TIERS", ModelMinTiersSchema, {});
+
+/** A model with no entry is open to everyone (tier 0). */
+export const getModelMinTier = (model: ChatModel): number =>
+  getModelMinTiers()[modelConfigKey(model)] ?? 0;
 
 /**
  * The cheapest way to unlock a model: the lowest-tier active plan that meets the
@@ -41,7 +42,6 @@ export const annotateModelLocks = <
   Plan extends { tier: number; active: boolean; price: string; name: string },
 >(
   providers: P[],
-  rules: ModelAccessRule[],
   userTier: number,
   plans: Plan[],
 ): (Omit<P, "models"> & {
@@ -50,7 +50,7 @@ export const annotateModelLocks = <
   providers.map((provider) => ({
     ...provider,
     models: provider.models.map((model) => {
-      const minTier = getModelMinTier(rules, {
+      const minTier = getModelMinTier({
         provider: provider.provider,
         model: model.name,
       });

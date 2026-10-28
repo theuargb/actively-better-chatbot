@@ -1,5 +1,7 @@
 import logger from "logger";
 import { getRedisClient } from "lib/redis";
+import { modelConfigKey, readJsonEnv } from "lib/env-json";
+import { z } from "zod";
 import { RateLimitMessagePayload } from "./rate-limit-message";
 
 export type RateLimitCheckResult =
@@ -8,11 +10,6 @@ export type RateLimitCheckResult =
 
 export type RateLimitWindow = "hour" | "day";
 export type RateLimitScope = "role" | "plan" | "model";
-
-export interface RateLimitConfig {
-  perHour?: number;
-  perDay?: number;
-}
 
 export interface AiRateLimitContext {
   userId: string;
@@ -39,29 +36,30 @@ const WINDOW_MS: Record<RateLimitWindow, number> = {
 
 const REDIS_KEY_PREFIX = "ai:rate:v2";
 
-const safeLimit = (value: string | undefined) => {
-  const limit = Number(value);
-  return Number.isFinite(limit) && limit > 0 ? Math.floor(limit) : undefined;
-};
+const LimitEntrySchema = z
+  .object({
+    perHour: z.number().int().positive().optional(),
+    perDay: z.number().int().positive().optional(),
+    maxChatLen: z.number().int().positive().optional(),
+  })
+  .strict();
+const ScopeMapSchema = z.record(z.string(), LimitEntrySchema);
+const RateLimitsSchema = z
+  .object({
+    roles: ScopeMapSchema.optional(),
+    plans: ScopeMapSchema.optional(),
+    models: ScopeMapSchema.optional(),
+  })
+  .strict();
 
 /**
- * Builds the environment/Redis fragment for a dynamic identity (role, plan code
- * or provider/model pair). Letters, digits, hyphens and underscores survive; any
- * other run collapses to a single underscore, so `openai/gpt-4.1-mini` becomes
- * `OPENAI_GPT-4_1_MINI`.
+ * `AI_RATE_LIMITS`: roles, plans and models each map an exact identity (role
+ * name, plan code, "<provider>/<model>") to its limits.
  */
-export const normalizeRateLimitKeyPart = (value: string) =>
-  value
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9_-]+/g, "_")
-    .replace(/^_+|_+$/g, "");
+export const getRateLimitConfig = () =>
+  readJsonEnv("AI_RATE_LIMITS", RateLimitsSchema, {});
 
-const modelIdentity = (model: { provider: string; model: string }) =>
-  `${model.provider}_${model.model}`;
-
-const scopeKeyPrefix = (scope: RateLimitScope, identity: string) =>
-  `AI_RATE_LIMIT_${scope.toUpperCase()}_${normalizeRateLimitKeyPart(identity)}`;
+const SCOPE_FIELD = { role: "roles", plan: "plans", model: "models" } as const;
 
 /**
  * Every scope that could govern this request: each of the user's roles, their
@@ -76,25 +74,19 @@ const scopeIdentities = (
     ? [{ scope: "plan" as const, value: context.planCode }]
     : []),
   ...(context.model
-    ? [{ scope: "model" as const, value: modelIdentity(context.model) }]
+    ? [{ scope: "model" as const, value: modelConfigKey(context.model) }]
     : []),
 ];
 
-const getScopeLimits = (
-  scope: RateLimitScope,
-  identity: string,
-): RateLimitConfig => {
-  const prefix = scopeKeyPrefix(scope, identity);
-  return {
-    perHour: safeLimit(process.env[`${prefix}_PER_HOUR`]),
-    perDay: safeLimit(process.env[`${prefix}_PER_DAY`]),
-  };
-};
+/** The limits configured in `AI_RATE_LIMITS` for one scope identity. */
+const getScopeLimits = (scope: RateLimitScope, identity: string) =>
+  getRateLimitConfig()[SCOPE_FIELD[scope]]?.[identity] ?? {};
 
 /**
- * The scope that governs one window, i.e. the most permissive configured limit.
- * Scopes with nothing configured are skipped rather than treated as unlimited —
- * otherwise a user whose plan or model sets no key would escape limits entirely.
+ * The scope that governs one window, i.e. the most permissive limit configured
+ * in `AI_RATE_LIMITS`. Scopes with nothing configured are skipped rather than
+ * treated as unlimited — otherwise a user whose plan or model sets no limit
+ * would escape limits entirely.
  *
  * Ties resolve to the first scope in `scopeIdentities` order. That has to be
  * deterministic: the winner also picks the counter, so a wobbling choice would
@@ -110,7 +102,7 @@ const resolveWinningScope = (
     const limits = getScopeLimits(scope, value);
     const limit = window === "hour" ? limits.perHour : limits.perDay;
     if (limit === undefined || (best && limit <= best.limit)) return best;
-    return { scope, identity: normalizeRateLimitKeyPart(value), limit };
+    return { scope, identity: value, limit };
   }, undefined);
 
 /**
@@ -122,9 +114,7 @@ export const getMaxChatLength = (
   context: Pick<AiRateLimitContext, "roles" | "planCode" | "model">,
 ) => {
   const caps = scopeIdentities(context)
-    .map(({ scope, value }) =>
-      safeLimit(process.env[`${scopeKeyPrefix(scope, value)}_MAX_CHAT_LEN`]),
-    )
+    .map(({ scope, value }) => getScopeLimits(scope, value).maxChatLen)
     .filter((value): value is number => Boolean(value));
   return caps.length ? Math.max(...caps) : undefined;
 };
@@ -218,7 +208,8 @@ export class AiRateLimiter {
   /**
    * At most one rule per window: the most permissive scope governs, and the
    * request is charged to that scope's counter. Each window resolves on its own,
-   * so the plan can win PER_HOUR while a role wins PER_DAY.
+   * so the plan can win perHour while a role wins perDay. Identities are encoded
+   * because model names may contain spaces, "/" or ":".
    */
   private rules(context: AiRateLimitContext): Rule[] {
     return (["hour", "day"] as const).flatMap((window) => {
@@ -226,7 +217,7 @@ export class AiRateLimiter {
       return winner
         ? [
             {
-              key: `${winner.scope}:${winner.identity}:${context.userId}`,
+              key: `${winner.scope}:${encodeURIComponent(winner.identity)}:${context.userId}`,
               window,
               limit: winner.limit,
             },
@@ -259,7 +250,8 @@ let limiter: AiRateLimiter | null = null;
 
 /**
  * Returns null when Redis is unavailable, which disables request limiting.
- * Thread-length caps are unaffected: they read env only and need no counters.
+ * Thread-length caps are unaffected: they read `AI_RATE_LIMITS` only and need
+ * no counters.
  */
 export const getAiRateLimiter = () => {
   const redis = getRedisClient();

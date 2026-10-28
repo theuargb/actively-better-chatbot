@@ -26,7 +26,7 @@ import {
   MoonStar,
   ChevronRight,
   Settings,
-  CreditCard,
+  Gem,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
@@ -42,6 +42,8 @@ import { GithubIcon } from "ui/github-icon";
 import { DiscordIcon } from "ui/discord-icon";
 import { useThemeStyle } from "@/hooks/use-theme-style";
 import { BasicUser } from "app-types/user";
+import type { UserPlanSummary } from "app-types/plan";
+import { Badge } from "ui/badge";
 import { getUserAvatar } from "lib/user/utils";
 import { Skeleton } from "ui/skeleton";
 
@@ -58,7 +60,6 @@ export function AppSidebarUserInner(props: {
   });
   const appStoreMutate = appStore((state) => state.mutate);
   const t = useTranslations("Layout");
-  const router = useRouter();
 
   const logout = () => {
     authClient.signOut().finally(() => {
@@ -122,6 +123,8 @@ export function AppSidebarUserInner(props: {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <SidebarPlanMenuItem />
+            <DropdownMenuSeparator />
 
             <DropdownMenuItem
               className="cursor-pointer"
@@ -169,14 +172,6 @@ export function AppSidebarUserInner(props: {
               <Settings className="size-4 text-foreground" />
               <span>{t("userSettings")}</span>
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => router.push("/pricing")}
-              className="cursor-pointer"
-              data-testid="plans-billing-menu-item"
-            >
-              <CreditCard className="size-4 text-foreground" />
-              <span>{t("plansAndBilling")}</span>
-            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout} className="cursor-pointer">
               <LogOutIcon className="size-4 text-foreground" />
@@ -186,6 +181,40 @@ export function AppSidebarUserInner(props: {
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
+  );
+}
+
+function SidebarPlanMenuItem() {
+  const router = useRouter();
+  const t = useTranslations("Layout");
+  const tp = useTranslations("Pricing");
+  const { data } = useSWR<UserPlanSummary>("/api/user/plan", fetcher, {
+    revalidateOnFocus: false,
+    shouldRetryOnError: false,
+    refreshInterval: 1000 * 60 * 10,
+  });
+
+  return (
+    <DropdownMenuItem
+      className="cursor-pointer"
+      data-testid="plans-billing-menu-item"
+      onClick={() => router.push("/pricing")}
+    >
+      <Gem className="size-4 text-foreground" />
+      <div className="grid flex-1 leading-tight">
+        {data ? (
+          <span className="truncate font-medium">
+            {data.planName ?? tp("freePlanName")}
+          </span>
+        ) : (
+          <Skeleton className="h-4 w-16" />
+        )}
+        <span className="text-xs text-muted-foreground">
+          {t("plansAndBilling")}
+        </span>
+      </div>
+      {data?.canUpgrade && <Badge className="ml-auto">{t("upgrade")}</Badge>}
+    </DropdownMenuItem>
   );
 }
 

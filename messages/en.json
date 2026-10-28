@@ -414,7 +414,8 @@
     "reportAnIssue": "Report an issue",
     "joinCommunity": "Join Community",
     "userSettings": "User Settings",
-    "plansAndBilling": "Plans & billing"
+    "plansAndBilling": "Plans & billing",
+    "upgrade": "Upgrade"
   },
   "Archive": {
     "title": "Archive",
@@ -735,22 +736,45 @@
   },
   "Pricing": {
     "title": "Plans & billing",
-    "description": "Choose the plan that fits how you use the assistant.",
+    "headline": "Unlock more of your assistant",
+    "subheadline": "Stronger models and higher limits. Upgrade, switch or cancel any time.",
+    "yourPlan": "Your plan",
+    "freePlanName": "Free",
+    "freePlanDescription": "The essentials, free forever.",
+    "freeStatus": "You're on the free plan.",
+    "assignedByAdmin": "Assigned by an administrator",
+    "renewsOn": "Renews on {date}",
+    "endsOn": "Ends on {date}",
     "monthly": "Monthly",
     "annual": "Annual",
+    "saveUpTo": "Save up to {percent}%",
     "perMonth": "/ month",
-    "perYear": "/ year",
+    "billedAnnually": "{price} billed yearly",
+    "freeForever": "Free forever",
+    "recommended": "Recommended",
     "currentPlan": "Current plan",
-    "subscribe": "Subscribe",
-    "switchPlan": "Switch to this plan",
+    "upgradeTo": "Upgrade to {plan}",
+    "switchTo": "Switch to {plan}",
+    "downgradeTo": "Downgrade to {plan}",
+    "availableOnRequest": "Available on request",
+    "includedInYourPlan": "Included in your plan",
+    "everythingIn": "Everything in {plan}, plus:",
+    "modelsHeading": "Models",
+    "moreModels": "+{count} more",
     "manageBilling": "Manage billing",
-    "cancelsOn": "Cancels on {date}",
-    "renewsOn": "Renews on {date}",
-    "notPurchasable": "Available on request",
-    "assignedByAdmin": "Assigned by an administrator",
+    "cancelSubscription": "Cancel subscription",
+    "resumeSubscription": "Resume subscription",
+    "resumed": "Your subscription will continue.",
+    "cancelTitle": "Cancel {plan}?",
+    "cancelDescription": "You keep {plan} until {date}. After that you move to {target}.",
+    "cancelDescriptionNoDate": "You keep {plan} until the end of the billing period. After that you move to {target}.",
+    "cancelLoses": "You'll lose access to:",
+    "keepPlan": "Keep my plan",
+    "confirmCancel": "Continue to cancel",
+    "securePayments": "Secure payments by Stripe. Cancel any time.",
     "billingDisabled": "Online payments are not available yet.",
     "checkoutSuccess": "Payment received. Your plan will update in a few seconds.",
-    "checkoutFailed": "Couldn't start checkout. Please try again."
+    "actionFailed": "Something went wrong. Please try again."
   },
   "Admin": {
     "title": "Admin",
@@ -763,9 +787,6 @@
     },
     "Plans": {
       "title": "Plans"
-    },
-    "Models": {
-      "title": "Model access"
     },
     "Users": {
       "title": "Users",

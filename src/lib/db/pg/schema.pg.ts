@@ -14,7 +14,6 @@ import {
   index,
   integer,
   numeric,
-  primaryKey,
 } from "drizzle-orm/pg-core";
 import { isNotNull } from "drizzle-orm";
 import { DBWorkflow, DBEdge, DBNode } from "app-types/workflow";
@@ -181,20 +180,6 @@ export const SubscriptionTable = pgTable(
     index("subscription_reference_id_idx").on(t.referenceId),
     index("subscription_stripe_subscription_id_idx").on(t.stripeSubscriptionId),
   ],
-);
-
-/** Minimum plan tier required to use a model. No row means open to everyone. */
-export const ModelAccessTable = pgTable(
-  "model_access",
-  {
-    provider: text("provider").notNull(),
-    model: text("model").notNull(),
-    minTier: integer("min_tier").notNull(),
-    updatedAt: timestamp("updated_at")
-      .notNull()
-      .default(sql`CURRENT_TIMESTAMP`),
-  },
-  (t) => [primaryKey({ columns: [t.provider, t.model] })],
 );
 
 // Role tables removed - using Better Auth's built-in role system
@@ -418,7 +403,6 @@ export type AgentEntity = typeof AgentTable.$inferSelect;
 export type UserEntity = typeof UserTable.$inferSelect;
 export type PlanEntity = typeof PlanTable.$inferSelect;
 export type SubscriptionEntity = typeof SubscriptionTable.$inferSelect;
-export type ModelAccessEntity = typeof ModelAccessTable.$inferSelect;
 export type SessionEntity = typeof SessionTable.$inferSelect;
 
 export type ToolCustomizationEntity =

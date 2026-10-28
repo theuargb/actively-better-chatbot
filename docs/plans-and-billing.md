@@ -1,7 +1,8 @@
 # Plans, billing and model access
 
-A **plan** is a row in `plan`. It carries a price, a `code` (namespaces its
-rate-limit env keys), and a `tier` (an integer; higher = more access).
+A **plan** is a row in `plan`. It carries a price, a `code` (its key in
+`AI_RATE_LIMITS.plans`), and a `tier` (an integer; higher = more access). Plans
+are listed by tier, then price, everywhere.
 
 ## Effective plan
 
@@ -13,13 +14,32 @@ A user's effective plan is the higher-`tier` of:
 On a tie the subscription wins so the pricing page shows what the user pays for.
 No plan = tier 0. Code: `src/lib/plan/effective-plan.ts`, `src/lib/plan/server.ts`.
 
-The effective plan's `code` feeds the existing `AI_RATE_LIMIT_PLAN_<CODE>_*`
-limits, so a subscriber gets the limits of the plan they pay for.
+The effective plan's `code` selects `AI_RATE_LIMITS.plans["<code>"]`, so a
+subscriber gets the limits of the plan they pay for.
+
+## Configuration (env, JSON)
+
+Identity-keyed settings are one JSON value per env var, with exact keys (role
+name, plan code, `"<provider>/<model>"` as shown in the picker), so Cyrillic and
+punctuation in model names never collide:
+
+```sh
+AI_MODEL_MIN_TIERS={"US/Claude 4":2,"Еней/Юрист Еней":1}
+AI_RATE_LIMITS={"roles":{"user":{"perHour":30,"perDay":200,"maxChatLen":40}},"plans":{"plus":{"perDay":500}},"models":{"US/Claude 4":{"perDay":50}}}
+```
+
+Malformed JSON, negative tiers or unknown limit fields stop the app at boot
+(`src/lib/env-config-check.ts`). Model keys missing from the registry and the
+old `AI_RATE_LIMIT_{ROLE,PLAN,MODEL}_*` vars are logged and ignored.
+
+Migrating old rate-limit vars: `AI_RATE_LIMIT_PLAN_PLUS_PER_DAY=500` becomes
+`{"plans":{"plus":{"perDay":500}}}`; `PER_HOUR`/`PER_DAY`/`MAX_CHAT_LEN` map to
+`perHour`/`perDay`/`maxChatLen`; role and model keys use the exact identity.
 
 ## Model access
 
-`model_access (provider, model, min_tier)`. A model without a row is open to
-everyone (tier 0). Admins edit rows at **Admin → Model access**.
+`AI_MODEL_MIN_TIERS` maps a model to its minimum plan tier. An unlisted model is
+open to everyone (tier 0).
 
 Enforcement is server-side and fail-closed:
 
@@ -33,7 +53,7 @@ Enforcement is server-side and fail-closed:
 The model is resolved first (`customModelProvider.resolveModel`), so an unknown
 model name is judged as the fallback model that would actually serve it.
 `requiredPlanName` is the cheapest active plan whose tier meets the model's
-`min_tier`; `null` means no active plan unlocks it.
+minimum tier; `null` means no active plan unlocks it.
 
 ## Stripe
 
@@ -53,8 +73,18 @@ Setup:
    `checkout.session.completed`, `customer.subscription.updated`,
    `customer.subscription.deleted`; put its signing secret in
    `STRIPE_WEBHOOK_SECRET`.
-4. Enable the Stripe Billing Portal; "Manage billing" on `/pricing` uses it for
-   cancel / payment method changes.
+4. Enable the Stripe Billing Portal with subscription updates and
+   cancellation allowed. `/pricing` uses it for "Manage billing", for switching
+   an existing subscription to another plan, and for "Cancel subscription"
+   (Stripe's hosted cancel confirmation). "Resume subscription" undoes a
+   scheduled cancellation without leaving the app.
+
+`/pricing` shows one card per active plan, ordered by tier, plus a synthesized
+Free card unless an active tier-0 plan exists. Each card lists the models it
+newly unlocks (from `AI_MODEL_MIN_TIERS`), and the cheapest purchasable plan
+above the user's tier is marked Recommended. The user menu's first entry shows
+the current plan (`GET /api/user/plan`) with an Upgrade badge when a higher
+purchasable plan exists.
 
 Stripe customers are created on first checkout, never at sign-up. Deleting an
 account cancels its active subscriptions first.
@@ -63,4 +93,7 @@ account cancels its active subscriptions first.
 
 Migration `0021_legal_yellowjacket.sql`: `plan.tier`, `plan.annual_price`,
 `plan.stripe_price_id`, `plan.stripe_annual_price_id` (unique), `user.stripe_customer_id`,
-`subscription`, `model_access`. Existing plans get tier `1`.
+`subscription`. Existing plans get tier `1`. Migration `0022_mixed_menace.sql`
+drops the short-lived `model_access` table; export it first with
+`select provider||'/'||model, min_tier from model_access;` into
+`AI_MODEL_MIN_TIERS`.

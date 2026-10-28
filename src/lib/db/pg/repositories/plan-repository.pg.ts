@@ -8,7 +8,10 @@ const ENTITLING_STATUSES = ["active", "trialing"];
 
 export const pgPlanRepository = {
   list: async (includeInactive = true): Promise<Plan[]> => {
-    const query = db.select().from(PlanTable).orderBy(asc(PlanTable.name));
+    const query = db
+      .select()
+      .from(PlanTable)
+      .orderBy(asc(PlanTable.tier), asc(PlanTable.price), asc(PlanTable.name));
     return includeInactive
       ? await query
       : await query.where(eq(PlanTable.active, true));
