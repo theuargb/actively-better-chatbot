@@ -1,6 +1,7 @@
 import { PricingPlans } from "@/components/plans/pricing-plans";
 import { getSession } from "auth/server";
 import { getPricingPageData } from "lib/plan/server";
+import { getUserAvatar } from "lib/user/utils";
 import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
@@ -23,5 +24,15 @@ export default async function PricingPage({
     searchParams,
   ]);
 
-  return <PricingPlans {...data} checkoutSuccess={checkout === "success"} />;
+  return (
+    <PricingPlans
+      {...data}
+      checkoutSuccess={checkout === "success"}
+      // Resolved here: the default-avatar switch is a server-only env var.
+      user={{
+        name: session.user.name,
+        avatar: getUserAvatar(session.user),
+      }}
+    />
+  );
 }
