@@ -6,11 +6,13 @@ import type {
   UserSubscriptionSummary,
 } from "app-types/plan";
 import { cn } from "lib/utils";
-import { Gem, Loader, Sparkles } from "lucide-react";
+import { Loader, Sparkles } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { Avatar, AvatarFallback, AvatarImage } from "ui/avatar";
 import { Button } from "ui/button";
 
 export function CurrentPlanPanel({
+  user,
   current,
   subscription,
   billingEnabled,
@@ -21,6 +23,8 @@ export function CurrentPlanPanel({
   onRestore,
   onUpgrade,
 }: {
+  /** `avatar` is already resolved (getUserAvatar), empty when there is none. */
+  user: { name: string; avatar: string };
   current: PricingView["current"];
   subscription: UserSubscriptionSummary | null;
   billingEnabled: boolean;
@@ -59,8 +63,16 @@ export function CurrentPlanPanel({
       className="flex flex-wrap items-center gap-4 rounded-2xl border bg-card/70 p-5 shadow-sm backdrop-blur-xl"
     >
       <div className="flex items-center gap-3">
-        <div className="flex size-11 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 via-fuchsia-500 to-amber-400 text-white shadow-md shadow-fuchsia-500/30">
-          <Gem className="size-5" />
+        {/* The gradient ring keeps the panel's accent around a personal avatar. */}
+        <div className="rounded-full bg-gradient-to-br from-violet-600 via-fuchsia-500 to-amber-400 p-0.5 shadow-md shadow-fuchsia-500/30">
+          <Avatar className="size-11 rounded-full border-2 border-card bg-card">
+            <AvatarImage
+              className="object-cover"
+              src={user.avatar || undefined}
+              alt={user.name}
+            />
+            <AvatarFallback>{user.name.slice(0, 1)}</AvatarFallback>
+          </Avatar>
         </div>
         <div>
           <p className="text-xs text-muted-foreground">{t("yourPlan")}</p>

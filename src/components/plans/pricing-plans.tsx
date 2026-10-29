@@ -23,6 +23,7 @@ type Props = {
   subscription: UserSubscriptionSummary | null;
   billingEnabled: boolean;
   checkoutSuccess: boolean;
+  user: { name: string; avatar: string };
 };
 
 const PLAN_SUMMARY_KEY = "/api/user/plan";
@@ -40,6 +41,7 @@ export function PricingPlans({
   subscription,
   billingEnabled,
   checkoutSuccess,
+  user,
 }: Props) {
   const t = useTranslations("Pricing");
   const locale = useLocale();
@@ -141,6 +143,7 @@ export function PricingPlans({
         </div>
 
         <CurrentPlanPanel
+          user={user}
           current={view.current}
           subscription={subscription}
           billingEnabled={billingEnabled}

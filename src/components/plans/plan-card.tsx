@@ -89,6 +89,8 @@ export function PlanCard({
       data-testid={`pricing-plan-${card.code ?? "free"}`}
       className={cn(
         "group relative rounded-3xl transition-transform duration-300",
+        // On one-column layouts the current plan panel above already says this.
+        isCurrent && "max-md:hidden",
         card.recommended
           ? "overflow-hidden p-[2px] shadow-[0_24px_70px_-20px_rgba(192,38,211,0.6)] xl:-translate-y-3"
           : "hover:-translate-y-1",
@@ -120,21 +122,12 @@ export function PlanCard({
             unoptimized
             className="object-cover transition-transform duration-[1500ms] ease-out group-hover:scale-110"
           />
-          <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-2">
-            {card.recommended ? (
-              <Badge className="border-white/30 bg-black/40 text-white backdrop-blur-md">
-                <Sparkles className="size-3" />
-                {t("recommended")}
-              </Badge>
-            ) : (
-              <span />
-            )}
-            {isCurrent && (
-              <Badge className="border-white/30 bg-white/80 text-black backdrop-blur-md">
-                {t("currentPlan")}
-              </Badge>
-            )}
-          </div>
+          {card.recommended && (
+            <Badge className="absolute left-3 top-3 border-white/30 bg-black/40 text-white backdrop-blur-md">
+              <Sparkles className="size-3" />
+              {t("recommended")}
+            </Badge>
+          )}
         </div>
 
         <div className="relative -mt-6 flex flex-1 flex-col gap-5 px-6 pb-6">
